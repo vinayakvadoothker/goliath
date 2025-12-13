@@ -16,7 +16,7 @@ services:
       POSTGRES_PASSWORD: goliath
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+      - ../scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U goliath"]
       interval: 5s
@@ -82,13 +82,15 @@ services:
     container_name: goliath-ingest
     ports:
       - "8001:8000"
+    env_file:
+      - ../.env
     environment:
       INGEST_SERVICE_PORT: 8000
       POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
       WEAVIATE_URL: http://weaviate:8080
       LEARNER_SERVICE_URL: http://learner:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -110,6 +112,8 @@ services:
     container_name: goliath-decision
     ports:
       - "8002:8000"
+    env_file:
+      - ../.env
     environment:
       DECISION_SERVICE_PORT: 8000
       POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
@@ -118,7 +122,7 @@ services:
       EXPLAIN_SERVICE_URL: http://explain:8000
       INGEST_SERVICE_URL: http://ingest:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -142,13 +146,15 @@ services:
     container_name: goliath-learner
     ports:
       - "8003:8000"
+    env_file:
+      - ../.env
     environment:
       LEARNER_SERVICE_PORT: 8000
       POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
       WEAVIATE_URL: http://weaviate:8080
       JIRA_SIMULATOR_URL: http://jira-simulator:8080
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -199,10 +205,12 @@ services:
     container_name: goliath-explain
     ports:
       - "8005:8000"
+    env_file:
+      - ../.env
     environment:
       EXPLAIN_SERVICE_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
@@ -219,6 +227,8 @@ services:
     container_name: goliath-monitoring
     ports:
       - "8006:8000"
+    env_file:
+      - ../.env
     environment:
       MONITORING_SERVICE_PORT: 8000
       MONITORING_SERVICE_NAME: ${MONITORING_SERVICE_NAME:-api-service}
@@ -226,7 +236,7 @@ services:
       MONITORING_LOG_INTERVAL: ${MONITORING_LOG_INTERVAL:-5}
       MONITORING_INGEST_URL: http://ingest:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       ingest:

@@ -22,7 +22,7 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8005 --reload
 ```bash
 EXPLAIN_SERVICE_PORT=8005
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 ```
 
 ## Testing

@@ -324,7 +324,7 @@ Rules:
 - Be specific: "Resolved 3 similar API timeout incidents in last 7 days" not "experienced"
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}
@@ -532,7 +532,7 @@ Rules:
 """
     
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}
@@ -700,48 +700,48 @@ def test_evidence_generation():
 ## Complete Checklist
 
 ### Service Scaffolding (Hour 2-3)
-- [ ] Scaffold `/services/executor/` (FastAPI + PostgreSQL)
-- [ ] Scaffold `/services/explain/` (FastAPI, no DB)
-- [ ] Add `/healthz` endpoints to both
-- [ ] Add request logging middleware
-- [ ] Add correlation ID middleware
-- [ ] Setup PostgreSQL connection (Executor)
-- [ ] Setup LLM client (Explain)
+- ✅ Scaffold `/services/executor/` (FastAPI + PostgreSQL)
+- ✅ Scaffold `/services/explain/` (FastAPI, no DB)
+- ✅ Add `/healthz` endpoints to both
+- ✅ Add request logging middleware
+- ✅ Add correlation ID middleware
+- ✅ Setup PostgreSQL connection (Executor)
+- ✅ Setup LLM client (Explain)
 
 ### Executor Service (Hour 8-10)
-- [ ] Implement `POST /executeDecision` endpoint
-- [ ] Implement Jira API integration (calls Person 1's Jira Simulator)
-- [ ] Implement service → project mapping
-- [ ] Implement severity → priority mapping
-- [ ] Implement human → Jira accountId mapping
-- [ ] Implement fallback (DB storage if Jira fails)
-- [ ] Implement optional Slack integration
-- [ ] Create database schema
-- [ ] Write tests
+- ✅ Implement `POST /executeDecision` endpoint
+- ✅ Implement Jira API integration (calls Person 1's Jira Simulator)
+- ✅ Implement service → project mapping
+- ✅ Implement severity → priority mapping
+- ✅ Implement human → Jira accountId mapping
+- ✅ Implement fallback (DB storage if Jira fails)
+- [ ] Implement optional Slack integration (optional, not critical)
+- ✅ Create database schema
+- ✅ Write tests (8/8 tests passing)
 
 ### Explain Service (Hour 10-12)
-- [ ] Implement `POST /explainDecision` endpoint
-- [ ] Implement LLM evidence generation
-- [ ] Implement "why not next best" logic
-- [ ] Implement constraints summary formatting
-- [ ] Handle edge cases (no evidence, all same score)
-- [ ] Write tests
+- ✅ Implement `POST /explainDecision` endpoint
+- ✅ Implement LLM evidence generation
+- ✅ Implement "why not next best" logic
+- ✅ Implement constraints summary formatting
+- ✅ Handle edge cases (no evidence, all same score)
+- ✅ Write tests (9/9 tests passing)
 
 ### Polish (Hour 36-40)
-- [ ] Polish Slack message formatting
-- [ ] Polish fallback message display
-- [ ] Implement optional Slack buttons
-- [ ] Improve error handling
-- [ ] Test all edge cases
+- [ ] Polish Slack message formatting (optional, Slack not implemented)
+- ✅ Polish fallback message display
+- [ ] Implement optional Slack buttons (optional, Slack not implemented)
+- ✅ Improve error handling
+- ✅ Test all edge cases (all tests passing: Executor 8/8, Explain 9/9)
 
 ### Documentation
-- [ ] Create `/services/executor/README.md`
-- [ ] Create `/services/explain/README.md`
-- [ ] Create `/scripts/test_standalone.sh` for Executor
-- [ ] Create `/scripts/test_standalone.sh` for Explain
+- ✅ Create `/services/executor/README.md`
+- ✅ Create `/services/explain/README.md`
+- ✅ Create `/scripts/test_standalone.sh` for Executor
+- ✅ Create `/scripts/test_standalone.sh` for Explain
 - [ ] Create mock data files
-- [ ] Document all API endpoints
-- [ ] Document LLM prompt patterns
+- ✅ Document all API endpoints
+- ✅ Document LLM prompt patterns
 
 ---
 
@@ -781,7 +781,7 @@ SLACK_ENABLED=false
 # Explain Service
 EXPLAIN_SERVICE_PORT=8005
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 ```
 
 ---

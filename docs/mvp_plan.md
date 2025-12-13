@@ -1448,7 +1448,7 @@ Rules:
 Cleaned description:
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
     )
@@ -2030,7 +2030,7 @@ Rules:
 - Be specific: "Resolved 3 similar API timeout incidents in last 7 days" not "experienced"
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}
@@ -2249,7 +2249,7 @@ Rules:
 - Use consistent terminology
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}

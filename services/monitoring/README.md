@@ -77,7 +77,7 @@ MONITORING_AUTO_START=true                  # Auto-start monitoring loop (defaul
 
 # LLM configuration (optional)
 OPENAI_API_KEY=sk-...                       # OpenAI API key for log preprocessing
-OPENAI_MODEL=gpt-4                          # OpenAI model to use
+OPENAI_MODEL=gpt-5.2                          # OpenAI model to use
 ```
 
 ## How It Works

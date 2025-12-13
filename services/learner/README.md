@@ -27,6 +27,7 @@ LEARNER_SERVICE_PORT=8003
 POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 WEAVIATE_URL=http://weaviate:8080
 JIRA_SIMULATOR_URL=http://localhost:8080
+DECISION_SERVICE_URL=http://decision:8002
 OPENAI_API_KEY=sk-...
 ```
 
