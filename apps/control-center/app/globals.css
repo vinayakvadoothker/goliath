@@ -1,0 +1,83 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #9BB4C0;
+    --color-primary-light: #B8D0DC;
+    --color-primary-dark: #7A9BA8;
+    --color-secondary: #A18D6D;
+    --color-secondary-light: #B8A88A;
+    --color-secondary-dark: #8A7555;
+    --color-error: #703B3B;
+    --color-error-light: #8A4F4F;
+    --color-error-dark: #5A2F2F;
+    --color-background: #E1D0B3;
+    --color-background-light: #F0E5D0;
+    --color-background-dark: #D2C19A;
+    
+    --background: 225 20% 80%;
+    --foreground: 20 15% 15%;
+    
+    --card: 225 20% 85%;
+    --card-foreground: 20 15% 15%;
+    
+    --popover: 225 20% 85%;
+    --popover-foreground: 20 15% 15%;
+    
+    --primary: 200 25% 65%;
+    --primary-foreground: 20 15% 15%;
+    
+    --secondary: 35 25% 55%;
+    --secondary-foreground: 20 15% 15%;
+    
+    --muted: 35 20% 70%;
+    --muted-foreground: 20 15% 40%;
+    
+    --accent: 200 25% 65%;
+    --accent-foreground: 20 15% 15%;
+    
+    --destructive: 5 40% 35%;
+    --destructive-foreground: 0 0% 100%;
+    
+    --border: 35 25% 55%;
+    --input: 35 25% 55%;
+    --ring: 200 25% 65%;
+    
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Custom scrollbar styles */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background-color: #A18D6D;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #8A7555;
+}
+
+/* Firefox scrollbar */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #A18D6D transparent;
+}

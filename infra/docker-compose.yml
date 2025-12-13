@@ -274,6 +274,51 @@ services:
     networks:
       - goliath-network
 
+  control-center-api:
+    build:
+      context: ../services/control-center
+      dockerfile: Dockerfile
+    container_name: goliath-control-center-api
+    ports:
+      - "8007:8007"
+    environment:
+      CONTROL_CENTER_PORT: 8007
+      INGEST_SERVICE_URL: http://ingest:8000
+      DECISION_SERVICE_URL: http://decision:8000
+      EXECUTOR_SERVICE_URL: http://executor:8000
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      - ingest
+      - decision
+      - executor
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8007/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  control-center:
+    build:
+      context: ../apps/control-center
+      dockerfile: Dockerfile
+    container_name: goliath-control-center
+    ports:
+      - "6767:6767"
+    environment:
+      NEXT_PUBLIC_WS_URL: ws://localhost:8007/ws
+      NODE_ENV: production
+    depends_on:
+      - control-center-api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6767"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
 volumes:
   postgres_data:
   weaviate_data:

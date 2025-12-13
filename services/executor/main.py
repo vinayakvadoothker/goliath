@@ -266,6 +266,23 @@ async def health():
     return {"status": "healthy", "service": "executor"}
 
 
+@app.get("/executed_actions")
+async def get_executed_actions(decision_id: Optional[str] = None):
+    """Get executed actions, optionally filtered by decision_id."""
+    try:
+        if decision_id:
+            query = "SELECT * FROM executed_actions WHERE decision_id = %s ORDER BY created_at DESC"
+            actions = execute_query(query, [decision_id])
+        else:
+            query = "SELECT * FROM executed_actions ORDER BY created_at DESC LIMIT 100"
+            actions = execute_query(query)
+        
+        return actions
+    except Exception as e:
+        logger.error(f"Failed to get executed actions: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 @app.post("/executeDecision", response_model=ExecuteDecisionResponse)
 async def execute_decision(request: ExecuteDecisionRequest, req: Request):
     """
