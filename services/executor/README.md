@@ -22,7 +22,19 @@ python -m uvicorn main:app --host 0.0.0.0 --port 8004 --reload
 ```bash
 EXECUTOR_SERVICE_PORT=8004
 POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
+
+# Jira Configuration (supports both real Jira and Jira Simulator)
+# Option 1: Use real Jira (requires all three)
+JIRA_URL=https://your-domain.atlassian.net
+JIRA_EMAIL=your-email@example.com
+JIRA_API_KEY=your-api-key
+
+# Option 2: Use Jira Simulator (default, no auth required)
 JIRA_SIMULATOR_URL=http://localhost:8080
+
+# If JIRA_URL, JIRA_EMAIL, and JIRA_API_KEY are all set, real Jira will be used.
+# Otherwise, Jira Simulator will be used.
+
 SLACK_WEBHOOK_URL= (optional)
 SLACK_ENABLED=false
 ```

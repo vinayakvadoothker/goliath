@@ -18,8 +18,11 @@ help:
 	@echo ""
 	@echo "Data & Testing:"
 	@echo "  make seed           - Seed Jira Simulator with data"
+	@echo "  make sync-learner   - Sync Learner Service with seeded data"
 	@echo "  make health         - Check health of all services"
-	@echo "  make test           - Run all tests"
+	@echo "  make test           - Test entire pipeline with simulated errors"
+	@echo "  make test-weaviate  - Test Weaviate storage and live decision making"
+	@echo "  make pipeline       - Alias for make test"
 	@echo ""
 	@echo "Cleanup:"
 	@echo "  make clean          - Stop services and remove volumes"
@@ -34,13 +37,22 @@ setup:
 	$(MAKE) create-env || exit 1; \
 	$(MAKE) create-dirs || exit 1; \
 	$(MAKE) start-infra || exit 1; \
+	$(MAKE) start-services || exit 1; \
+	@echo ""; \
+	@echo "⏳ Waiting for services to be fully ready..."; \
+	@sleep 10; \
 	$(MAKE) seed || { \
 		echo ""; \
 		echo "⚠️  Seeding failed, but continuing..."; \
 		echo "   You can retry seeding later with: make seed"; \
 		echo ""; \
 	}; \
-	$(MAKE) start-services || exit 1; \
+	$(MAKE) sync-learner || { \
+		echo ""; \
+		echo "⚠️  Learner sync failed, but continuing..."; \
+		echo "   You can retry later with: make sync-learner"; \
+		echo ""; \
+	}; \
 	echo ""; \
 	echo "✅ Setup complete! All services are running."; \
 	echo ""; \
@@ -195,6 +207,35 @@ seed:
 		exit 1; \
 	}
 
+# Sync Learner Service with seeded data
+sync-learner:
+	@echo "🔄 Syncing Learner Service with seeded data..."
+	@echo "   (Building capability profiles from closed tickets...)"
+	@timeout=30; \
+	while [ $$timeout -gt 0 ]; do \
+		if curl -f -s http://localhost:8003/healthz >/dev/null 2>&1; then \
+			break; \
+		fi; \
+		echo "   Waiting for Learner Service to be ready... ($$timeout seconds remaining)"; \
+		sleep 2; \
+		timeout=$$((timeout - 2)); \
+	done; \
+	if [ $$timeout -le 0 ]; then \
+		echo "❌ Learner Service not ready after 30 seconds"; \
+		echo "   Make sure services are running: make start"; \
+		exit 1; \
+	fi; \
+	response=$$(curl -s -X POST http://localhost:8003/sync/jira \
+		-H "Content-Type: application/json" \
+		-d '{"days_back": 90}' 2>&1); \
+	if echo "$$response" | grep -q '"synced"'; then \
+		synced=$$(echo "$$response" | grep -o '"synced":[0-9]*' | grep -o '[0-9]*'); \
+		echo "✅ Learner Service synced: $$synced tickets processed"; \
+	else \
+		echo "⚠️  Learner sync may have failed. Response: $$response"; \
+		echo "   You can retry manually: curl -X POST http://localhost:8003/sync/jira"; \
+	fi
+
 # Health check
 health:
 	@echo "🏥 Checking service health..."
@@ -219,10 +260,35 @@ health:
 	echo ""; \
 	echo "✅ All services are healthy!"
 
-# Run tests
+# Run pipeline tests
 test:
-	@echo "🧪 Running tests..."
-	@echo "TODO: Add test commands"
+	@echo "🧪 Running Goliath Pipeline Tests..."
+	@echo ""
+	@echo "This will test the entire pipeline:"
+	@echo "  Monitoring → Ingest → Decision → Executor → Learner"
+	@echo ""
+	@echo "Make sure all services are running first:"
+	@echo "  make start"
+	@echo ""
+	@bash scripts/test_pipeline.sh
+
+# Test Weaviate and live decision making
+test-weaviate:
+	@echo "🧪 Testing Weaviate Storage and Live Decision Making..."
+	@echo ""
+	@echo "This will test:"
+	@echo "  - Weaviate WorkItem storage"
+	@echo "  - Live decision making with real data"
+	@echo "  - Full pipeline: WorkItem → Decision → Executor → Jira"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  - Services running: make start"
+	@echo "  - Data seeded: make seed"
+	@echo ""
+	@bash scripts/test_weaviate_and_decisions.sh
+
+# Test pipeline (alias for test)
+pipeline: test
 
 # Clean everything
 clean:

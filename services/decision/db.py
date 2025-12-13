@@ -209,15 +209,77 @@ def get_decision(work_item_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
-def get_decision_candidates(decision_id: str) -> List[Dict[str, Any]]:
-    """Get all candidates for a decision (audit trail)."""
-    query = """
-        SELECT human_id, score, rank, filtered, filter_reason, score_breakdown
-        FROM decision_candidates
-        WHERE decision_id = %s
-        ORDER BY rank
+def get_decision_candidates(decision_id: str, service: Optional[str] = None) -> List[Dict[str, Any]]:
     """
-    results = execute_query(query, [decision_id])
+    Get all candidates for a decision (audit trail) with human details.
+    
+    Args:
+        decision_id: Decision ID
+        service: Optional service name for filtering human_service_stats
+    """
+    # Get service from decision if not provided
+    if not service:
+        decision_query = "SELECT work_item_id FROM decisions WHERE id = %s"
+        decision_result = execute_query(decision_query, [decision_id])
+        if decision_result:
+            work_item_id = decision_result[0]["work_item_id"]
+            work_item_query = "SELECT service FROM work_items WHERE id = %s"
+            work_item_result = execute_query(work_item_query, [work_item_id])
+            if work_item_result:
+                service = work_item_result[0]["service"]
+    
+    # Build query with service filter for human_service_stats
+    if service:
+        query = """
+            SELECT 
+                dc.human_id, 
+                dc.score, 
+                dc.rank, 
+                dc.filtered, 
+                dc.filter_reason, 
+                dc.score_breakdown,
+                h.display_name,
+                h.jira_account_id,
+                COALESCE(hss.fit_score, 0.5) as fit_score,
+                COALESCE(hss.resolves_count, 0) as resolves_count,
+                COALESCE(hss.transfers_count, 0) as transfers_count,
+                hss.last_resolved_at,
+                COALESCE(hl.pages_7d, 0) as pages_7d,
+                COALESCE(hl.active_items, 0) as active_items
+            FROM decision_candidates dc
+            LEFT JOIN humans h ON dc.human_id = h.id
+            LEFT JOIN human_service_stats hss ON dc.human_id = hss.human_id AND hss.service = %s
+            LEFT JOIN human_load hl ON dc.human_id = hl.human_id
+            WHERE dc.decision_id = %s
+            ORDER BY dc.rank
+        """
+        results = execute_query(query, [service, decision_id])
+    else:
+        # Fallback if service not available
+        query = """
+            SELECT 
+                dc.human_id, 
+                dc.score, 
+                dc.rank, 
+                dc.filtered, 
+                dc.filter_reason, 
+                dc.score_breakdown,
+                h.display_name,
+                h.jira_account_id,
+                0.5 as fit_score,
+                0 as resolves_count,
+                0 as transfers_count,
+                NULL as last_resolved_at,
+                COALESCE(hl.pages_7d, 0) as pages_7d,
+                COALESCE(hl.active_items, 0) as active_items
+            FROM decision_candidates dc
+            LEFT JOIN humans h ON dc.human_id = h.id
+            LEFT JOIN human_load hl ON dc.human_id = hl.human_id
+            WHERE dc.decision_id = %s
+            ORDER BY dc.rank
+        """
+        results = execute_query(query, [decision_id])
+    
     candidates = []
     for row in results:
         candidate = dict(row)

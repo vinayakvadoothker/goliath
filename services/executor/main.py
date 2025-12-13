@@ -6,8 +6,9 @@ import json
 import uuid
 import logging
 import asyncio
+import base64
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -146,6 +147,42 @@ def format_jira_description(
     return "\n".join(description_parts)
 
 
+def get_jira_config() -> Tuple[str, Dict[str, str]]:
+    """
+    Get Jira URL and authentication headers.
+    
+    Supports both real Jira (with API keys) and Jira Simulator (no auth).
+    
+    Returns:
+        Tuple of (jira_url, headers)
+    """
+    # Check if using real Jira
+    jira_url = os.getenv("JIRA_URL", "").rstrip("/")
+    jira_email = os.getenv("JIRA_EMAIL")
+    jira_api_key = os.getenv("JIRA_API_KEY")
+    
+    # If real Jira credentials provided, use them
+    if jira_url and jira_email and jira_api_key:
+        logger.info(f"Using real Jira: {jira_url}")
+        credentials = f"{jira_email}:{jira_api_key}"
+        encoded = base64.b64encode(credentials.encode()).decode()
+        headers = {
+            "Authorization": f"Basic {encoded}",
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+        return jira_url, headers
+    
+    # Otherwise, use Jira Simulator (no auth)
+    jira_url = os.getenv("JIRA_SIMULATOR_URL", "http://localhost:8080")
+    logger.info(f"Using Jira Simulator: {jira_url}")
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+    }
+    return jira_url, headers
+
+
 async def create_jira_issue_with_retry(
     jira_issue: Dict[str, Any],
     max_retries: int = 3,
@@ -153,6 +190,8 @@ async def create_jira_issue_with_retry(
 ) -> Dict[str, Any]:
     """
     Create Jira issue with exponential backoff retry.
+    
+    Supports both real Jira (with API keys) and Jira Simulator (no auth).
     
     Args:
         jira_issue: Jira issue payload
@@ -165,7 +204,7 @@ async def create_jira_issue_with_retry(
     Raises:
         httpx.HTTPError: If all retries fail
     """
-    jira_url = os.getenv("JIRA_SIMULATOR_URL", "http://localhost:8080")
+    jira_url, headers = get_jira_config()
     timeout = httpx.Timeout(10.0, connect=5.0)
     
     last_error = None
@@ -175,6 +214,7 @@ async def create_jira_issue_with_retry(
                 response = await client.post(
                     f"{jira_url}/rest/api/3/issue",
                     json=jira_issue,
+                    headers=headers
                 )
                 response.raise_for_status()
                 return response.json()

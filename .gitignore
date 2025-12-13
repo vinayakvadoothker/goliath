@@ -72,5 +72,11 @@ temp/
 # OS
 Thumbs.db
 
+<<<<<<< Updated upstream
 !apps/ui/lib/
 .npm-cache
+=======
+# AI
+.claude/
+.cursor/
+>>>>>>> Stashed changes

@@ -89,6 +89,7 @@ services:
       POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
       WEAVIATE_URL: http://weaviate:8080
       LEARNER_SERVICE_URL: http://learner:8000
+      DECISION_SERVICE_URL: http://decision:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
@@ -178,10 +179,15 @@ services:
     container_name: goliath-executor
     ports:
       - "8004:8000"
+    env_file:
+      - ../.env
     environment:
       EXECUTOR_SERVICE_PORT: 8000
       POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
       JIRA_SIMULATOR_URL: http://jira-simulator:8080
+      JIRA_URL: ${JIRA_URL:-}
+      JIRA_EMAIL: ${JIRA_EMAIL:-}
+      JIRA_API_KEY: ${JIRA_API_KEY:-}
       SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
       SLACK_ENABLED: ${SLACK_ENABLED:-false}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
