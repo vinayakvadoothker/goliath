@@ -883,7 +883,7 @@ Copy `.env.example` to `.env` and fill in:
 ```bash
 # LLM API (required)
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 
 # Or use Anthropic
 ANTHROPIC_API_KEY=sk-...

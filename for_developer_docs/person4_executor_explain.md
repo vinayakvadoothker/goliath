@@ -324,7 +324,7 @@ Rules:
 - Be specific: "Resolved 3 similar API timeout incidents in last 7 days" not "experienced"
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}
@@ -532,7 +532,7 @@ Rules:
 """
     
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
         response_format={"type": "json_object"}
@@ -781,7 +781,7 @@ SLACK_ENABLED=false
 # Explain Service
 EXPLAIN_SERVICE_PORT=8005
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 ```
 
 ---

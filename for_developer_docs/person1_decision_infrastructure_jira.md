@@ -1041,7 +1041,7 @@ INGEST_SERVICE_URL=http://localhost:8001
 POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 WEAVIATE_URL=http://weaviate:8080
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 
 # Jira Simulator
 JIRA_SIMULATOR_PORT=8080

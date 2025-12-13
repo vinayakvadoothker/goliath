@@ -525,7 +525,7 @@ Rules:
 Cleaned description:
 """
     response = openai_client.chat.completions.create(
-        model="gpt-4",
+        model="gpt-5.2",
         messages=[{"role": "user", "content": prompt}],
         temperature=0,  # Deterministic
     )
@@ -861,7 +861,7 @@ POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 WEAVIATE_URL=http://weaviate:8080
 LEARNER_SERVICE_URL=http://localhost:8003
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 
 # Monitoring Service
 MONITORING_SERVICE_PORT=8006
@@ -870,7 +870,7 @@ MONITORING_ERROR_PROBABILITY=0.05
 MONITORING_LOG_INTERVAL=5
 MONITORING_INGEST_URL=http://localhost:8001
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 ```
 
 ---

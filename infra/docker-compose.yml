@@ -88,7 +88,7 @@ services:
       WEAVIATE_URL: http://weaviate:8080
       LEARNER_SERVICE_URL: http://learner:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -118,7 +118,7 @@ services:
       EXPLAIN_SERVICE_URL: http://explain:8000
       INGEST_SERVICE_URL: http://ingest:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -148,7 +148,7 @@ services:
       WEAVIATE_URL: http://weaviate:8080
       JIRA_SIMULATOR_URL: http://jira-simulator:8080
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       postgres:
@@ -202,7 +202,7 @@ services:
     environment:
       EXPLAIN_SERVICE_PORT: 8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
@@ -226,7 +226,7 @@ services:
       MONITORING_LOG_INTERVAL: ${MONITORING_LOG_INTERVAL:-5}
       MONITORING_INGEST_URL: http://ingest:8000
       OPENAI_API_KEY: ${OPENAI_API_KEY}
-      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.2}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
     depends_on:
       ingest:

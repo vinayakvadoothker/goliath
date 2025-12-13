@@ -41,7 +41,7 @@ ERROR_PROBABILITY = float(os.getenv("MONITORING_ERROR_PROBABILITY", "0.05"))
 LOG_INTERVAL = int(os.getenv("MONITORING_LOG_INTERVAL", "5"))
 AUTO_START = os.getenv("MONITORING_AUTO_START", "true").lower() == "true"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-5.2")
 
 # Initialize OpenAI client if API key is provided
 openai_client = None

@@ -57,15 +57,39 @@ def get_db_connection():
     import psycopg2
     from urllib.parse import urlparse
     
-    postgres_url = os.getenv("POSTGRES_URL", "postgresql://goliath:goliath@postgres:5432/goliath")
+    # Detect if running from host machine or inside Docker
+    # If POSTGRES_URL is set, use it; otherwise detect environment
+    postgres_url = os.getenv("POSTGRES_URL")
+    
+    if not postgres_url:
+        # Check if we're inside Docker (check for /.dockerenv or container hostname)
+        import socket
+        is_docker = os.path.exists("/.dockerenv") or socket.gethostname().endswith("container")
+        
+        if is_docker:
+            # Inside Docker, use service name
+            postgres_url = "postgresql://goliath:goliath@postgres:5432/goliath"
+        else:
+            # On host machine, use localhost
+            postgres_url = "postgresql://goliath:goliath@localhost:5432/goliath"
+    
     parsed = urlparse(postgres_url)
     
+    # If hostname is "postgres" but we're not in Docker, change to localhost
+    if parsed.hostname == "postgres":
+        import socket
+        is_docker = os.path.exists("/.dockerenv") or socket.gethostname().endswith("container")
+        if not is_docker:
+            # Replace postgres hostname with localhost for host machine execution
+            postgres_url = postgres_url.replace("postgres:", "localhost:")
+            parsed = urlparse(postgres_url)
+    
     # Try connecting with retries
-    max_retries = 5
+    max_retries = 10  # Increased retries for host machine connections
     for i in range(max_retries):
         try:
             conn = psycopg2.connect(
-                host=parsed.hostname or "postgres",
+                host=parsed.hostname or "localhost",
                 port=parsed.port or 5432,
                 database=parsed.path[1:] or "goliath",
                 user=parsed.username or "goliath",
@@ -79,6 +103,8 @@ def get_db_connection():
                 import time
                 time.sleep(2)
             else:
+                print(f"❌ Failed to connect to database at {parsed.hostname}:{parsed.port}")
+                print(f"   Error: {e}")
                 raise
 
 def seed_jira_data():

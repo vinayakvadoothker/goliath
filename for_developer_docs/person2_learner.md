@@ -815,7 +815,7 @@ JIRA_SIMULATOR_URL=http://localhost:8080
 POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 WEAVIATE_URL=http://weaviate:8080
 OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-4
+OPENAI_MODEL=gpt-5.2
 ```
 
 ---
