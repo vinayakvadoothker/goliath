@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export function Navbar() {
     return (
-        <nav className="bg-background px-6 py-4">
+        <nav className="bg-background px-6 py-4 border-b border-border">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-6">
                     <Link href="/" className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">

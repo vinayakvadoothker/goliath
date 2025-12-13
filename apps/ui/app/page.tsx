@@ -59,29 +59,31 @@ export default function DashboardPage() {
           <CardContent>
             <div className="space-y-4">
               {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className="h-9 w-9 bg-primary/20 text-primary rounded-full grid place-items-center font-bold text-xs">
-                      WI
+                <Link href={`/work-items/${1200 + i}`} key={i} className="block">
+                  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group">
+                    <div className="flex items-center gap-4">
+                      <div className="h-9 w-9 bg-primary/20 text-primary rounded-full grid place-items-center font-bold text-xs group-hover:bg-primary/30 transition-colors">
+                        WI
+                      </div>
+                      <div>
+                        <div className="font-medium group-hover:text-primary transition-colors">API Latency Spike #{1200 + i}</div>
+                        <div className="text-xs text-muted-foreground flex items-center gap-2">
+                          <span>api-service</span>
+                          <span>•</span>
+                          <span>2 mins ago</span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="font-medium">API Latency Spike #{1200 + i}</div>
-                      <div className="text-xs text-muted-foreground flex items-center gap-2">
-                        <span>api-service</span>
-                        <span>•</span>
-                        <span>2 mins ago</span>
+                    <div className="flex items-center gap-4">
+                      <Badge variant="decision" className="bg-purple-500/20 text-purple-400 border-purple-500/20">
+                        Auto-Assigned
+                      </Badge>
+                      <div className="flex -space-x-2">
+                        <div className="h-8 w-8 rounded-full border-2 border-background bg-muted grid place-items-center text-xs">JD</div>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <Badge variant="decision" className="bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 border-purple-500/20">
-                      Auto-Assigned
-                    </Badge>
-                    <div className="flex -space-x-2">
-                      <div className="h-8 w-8 rounded-full border-2 border-background bg-muted grid place-items-center text-xs">JD</div>
-                    </div>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           </CardContent>

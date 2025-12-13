@@ -17,10 +17,7 @@ export function MainLayout({ children }: MainLayoutProps) {
             <Navbar />
             <div className="flex h-[calc(100vh-65px)]">
                 <Sidebar collapsed={collapsed} setCollapsed={setCollapsed} />
-                <main className={cn(
-                    "flex-1 overflow-auto bg-[#0a0a0a] transition-all duration-300",
-                    collapsed ? "ml-[60px]" : "ml-0" // Sidebar handles its own width, we just need to ensure flow is correct. Actually flex will handle it.
-                )}>
+                <main className="flex-1 overflow-auto bg-background transition-all duration-300">
                     <div className="container mx-auto max-w-7xl p-6">
                         {children}
                     </div>

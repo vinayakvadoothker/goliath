@@ -60,7 +60,7 @@ export function DecisionCard({ workItemId, assignedTo, confidence, reasoning, on
                     <Button variant="outline" size="sm" onClick={onOverride} className="border-red-500/30 hover:bg-red-500/10 hover:text-red-500">
                         Override Decision
                     </Button>
-                    <Button size="sm" className="bg-decision hover:bg-decision/90 text-white">
+                    <Button size="sm" className="bg-decision hover:bg-decision/90 text-decision-foreground">
                         Confirm Assignment <ArrowRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>

@@ -13,7 +13,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
     return (
         <aside className={cn(
-            "bg-card hidden lg:flex flex-col flex-shrink-0 transition-all duration-300 relative",
+            "bg-card hidden lg:flex flex-col flex-shrink-0 transition-all duration-300 relative border-r border-border",
             collapsed ? "w-[60px]" : "w-64",
             "p-2"
         )}>
@@ -34,26 +34,26 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                         </h3>
                     )}
                     <div className="space-y-1">
-                        <Link href="/" className="w-full block">
-                            <Button variant="ghost" className={cn("w-full justify-start gap-2", collapsed && "justify-center px-0")}>
+                        <Link href="/" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <LayoutDashboard className="h-4 w-4" />
                                 {!collapsed && <span>Dashboard</span>}
                             </Button>
                         </Link>
-                        <Link href="/work-items" className="w-full block">
-                            <Button variant="ghost" className={cn("w-full justify-start gap-2", collapsed && "justify-center px-0")}>
+                        <Link href="/work-items" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <CheckSquare className="h-4 w-4" />
                                 {!collapsed && <span>Work Items</span>}
                             </Button>
                         </Link>
-                        <Link href="/graph" className="w-full block">
-                            <Button variant="ghost" className={cn("w-full justify-start gap-2", collapsed && "justify-center px-0")}>
+                        <Link href="/graph" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <Network className="h-4 w-4" />
                                 {!collapsed && <span>Graph</span>}
                             </Button>
                         </Link>
-                        <Link href="/stats" className="w-full block">
-                            <Button variant="ghost" className={cn("w-full justify-start gap-2", collapsed && "justify-center px-0")}>
+                        <Link href="/stats" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <BarChart2 className="h-4 w-4" />
                                 {!collapsed && <span>Stats</span>}
                             </Button>
@@ -67,8 +67,8 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                             Quick Actions
                         </h3>
                     )}
-                    <Link href="/work-items/new" className="block">
-                        <Button className={cn("w-full gap-2", collapsed && "justify-center px-0")} size={collapsed ? "icon" : "default"}>
+                    <Link href="/work-items/new" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                        <Button className={cn("gap-2", collapsed ? "" : "w-full justify-start")} size={collapsed ? "icon" : "default"}>
                             <Plus className="h-4 w-4" />
                             {!collapsed && "New Item"}
                         </Button>
