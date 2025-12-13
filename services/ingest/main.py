@@ -1,11 +1,16 @@
 """
 Ingest Service - Single source of truth for all work items
 """
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, Dict, Any
 import os
 from datetime import datetime
+import logging
+
+from pagerduty_webhook import process_pagerduty_incident_webhook, validate_pagerduty_signature
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Ingest Service", version="0.1.0")
 
@@ -106,6 +111,48 @@ async def get_work_item(work_item_id: str):
 async def record_outcome(work_item_id: str, outcome: OutcomeRequest):
     """Record an outcome for a work item"""
     return {"status": "recorded", "event_id": outcome.event_id}
+
+
+@app.post("/webhooks/pagerduty")
+async def pagerduty_webhook(request: Request):
+    """
+    Handle PagerDuty webhook events for incident creation (ingestion).
+    
+    Processes:
+    - incident.triggered: New incident created → creates WorkItem
+    - incident.created: Incident created → creates WorkItem
+    
+    This is the ingestion point: PagerDuty detects issues and creates incidents,
+    which are then converted to WorkItems for the Decision Engine.
+    """
+    try:
+        # Get signature from header (optional, for validation)
+        signature = request.headers.get("X-PagerDuty-Signature")
+        
+        # Read request body
+        body = await request.body()
+        
+        # Validate signature (if configured)
+        if not validate_pagerduty_signature(body, signature):
+            logger.warning("Invalid PagerDuty webhook signature")
+            raise HTTPException(status_code=401, detail="Invalid signature")
+        
+        # Parse JSON payload
+        webhook_data = await request.json()
+        
+        # Process webhook (creates WorkItem)
+        result = await process_pagerduty_incident_webhook(webhook_data)
+        
+        if result.get("status") == "error":
+            raise HTTPException(status_code=400, detail=result.get("message", "Webhook processing failed"))
+        
+        return result
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to process PagerDuty webhook: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Webhook processing failed: {str(e)}")
 
 
 if __name__ == "__main__":

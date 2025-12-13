@@ -197,10 +197,10 @@ async def create_jira_issue_with_retry(
 def store_executed_action(
     executed_action_id: str,
     decision_id: str,
-    jira_issue_key: Optional[str],
-    jira_issue_id: Optional[str],
     assigned_human_id: str,
     backup_human_ids: List[str],
+    jira_issue_key: Optional[str] = None,
+    jira_issue_id: Optional[str] = None,
     fallback_message: Optional[str] = None,
     slack_message_id: Optional[str] = None
 ) -> None:
@@ -210,11 +210,11 @@ def store_executed_action(
     Args:
         executed_action_id: Unique action ID
         decision_id: Decision ID
-        jira_issue_key: Jira issue key (if created)
-        jira_issue_id: Jira issue ID (if created)
         assigned_human_id: Assigned human ID
         backup_human_ids: Backup human IDs
-        fallback_message: Fallback message (if Jira failed)
+        jira_issue_key: Jira issue key (if created)
+        jira_issue_id: Jira issue ID (if created)
+        fallback_message: Fallback message (if execution failed)
         slack_message_id: Slack message ID (if sent)
     """
     try:
@@ -294,116 +294,7 @@ async def execute_decision(request: ExecuteDecisionRequest, req: Request):
     )
     
     try:
-        # Validate all mappings before execution
-        jira_project, jira_priority, jira_account_id = validate_mappings(
-            request.work_item.service,
-            request.work_item.severity,
-            request.primary_human_id
-        )
-        
-        logger.info(
-            f"Mappings validated: service={request.work_item.service}→{jira_project}, "
-            f"severity={request.work_item.severity}→{jira_priority}, "
-            f"human={request.primary_human_id}→{jira_account_id}"
-        )
-        
-        # Format Jira issue description
-        description = format_jira_description(
-            request.work_item,
-            request.primary_human_id,
-            request.backup_human_ids,
-            request.evidence
-        )
-        
-        # Build Jira issue payload
-        jira_issue = {
-            "fields": {
-                "project": {"key": jira_project},
-                "summary": request.work_item.description[:255],  # Jira summary max length
-                "description": description,
-                "issuetype": {"name": "Bug"},
-                "priority": {"name": jira_priority},
-                "assignee": {"accountId": jira_account_id},
-            }
-        }
-        
-        # Add story points if provided
-        if request.work_item.story_points:
-            jira_issue["fields"]["customfield_10016"] = request.work_item.story_points
-        
-        # Try to create Jira issue with retry
-        try:
-            jira_response = await create_jira_issue_with_retry(jira_issue)
-            jira_issue_key = jira_response["key"]
-            jira_issue_id = jira_response["id"]
-            
-            logger.info(
-                f"Jira issue created successfully: {jira_issue_key} "
-                f"(decision_id: {request.decision_id})"
-            )
-            
-            # Store executed action
-            store_executed_action(
-                executed_action_id,
-                request.decision_id,
-                jira_issue_key,
-                jira_issue_id,
-                request.primary_human_id,
-                request.backup_human_ids,
-            )
-            
-            # Link back to work item
-            update_work_item_jira_key(request.work_item_id, jira_issue_key)
-            
-            return ExecuteDecisionResponse(
-                executed_action_id=executed_action_id,
-                jira_issue_key=jira_issue_key,
-                jira_issue_id=jira_issue_id,
-                assigned_human_id=request.primary_human_id,
-                created_at=datetime.now().isoformat(),
-                message="Jira issue created successfully",
-                fallback_used=False,
-            )
-        
-        except Exception as jira_error:
-            # Fallback: store rendered message in database
-            logger.error(
-                f"Jira API failed for decision {request.decision_id}: {jira_error}. "
-                f"Using fallback storage."
-            )
-            
-            fallback_message = (
-                f"Jira Issue Creation Failed\n\n"
-                f"Decision ID: {request.decision_id}\n"
-                f"Work Item ID: {request.work_item_id}\n"
-                f"Service: {request.work_item.service}\n"
-                f"Severity: {request.work_item.severity}\n"
-                f"Primary Assignee: {request.primary_human_id}\n"
-                f"Backup Assignees: {', '.join(request.backup_human_ids) if request.backup_human_ids else 'None'}\n\n"
-                f"Description:\n{request.work_item.description}\n\n"
-                f"Evidence:\n" + "\n".join([f"- {ev.text}" for ev in request.evidence])
-            )
-            
-            # Store executed action with fallback message
-            store_executed_action(
-                executed_action_id,
-                request.decision_id,
-                None,  # No Jira issue key
-                None,  # No Jira issue ID
-                request.primary_human_id,
-                request.backup_human_ids,
-                fallback_message=fallback_message,
-            )
-            
-            return ExecuteDecisionResponse(
-                executed_action_id=executed_action_id,
-                jira_issue_key=None,
-                jira_issue_id=None,
-                assigned_human_id=request.primary_human_id,
-                created_at=datetime.now().isoformat(),
-                message="Jira issue creation failed, stored in database as fallback",
-                fallback_used=True,
-            )
+        return await _execute_jira(request, executed_action_id)
     
     except ValueError as e:
         logger.error(f"Validation error for decision {request.decision_id}: {e}")
@@ -414,6 +305,119 @@ async def execute_decision(request: ExecuteDecisionRequest, req: Request):
             exc_info=True
         )
         raise HTTPException(status_code=500, detail=f"Failed to execute decision: {str(e)}")
+
+
+async def _execute_jira(request: ExecuteDecisionRequest, executed_action_id: str) -> ExecuteDecisionResponse:
+    """Execute decision by creating Jira issue."""
+    # Validate all mappings before execution
+    jira_project, jira_priority, jira_account_id = validate_mappings(
+        request.work_item.service,
+        request.work_item.severity,
+        request.primary_human_id
+    )
+    
+    logger.info(
+        f"Mappings validated: service={request.work_item.service}→{jira_project}, "
+        f"severity={request.work_item.severity}→{jira_priority}, "
+        f"human={request.primary_human_id}→{jira_account_id}"
+    )
+    
+    # Format Jira issue description
+    description = format_jira_description(
+        request.work_item,
+        request.primary_human_id,
+        request.backup_human_ids,
+        request.evidence
+    )
+    
+    # Build Jira issue payload
+    jira_issue = {
+        "fields": {
+            "project": {"key": jira_project},
+            "summary": request.work_item.description[:255],  # Jira summary max length
+            "description": description,
+            "issuetype": {"name": "Bug"},
+            "priority": {"name": jira_priority},
+            "assignee": {"accountId": jira_account_id},
+        }
+    }
+    
+    # Add story points if provided
+    if request.work_item.story_points:
+        jira_issue["fields"]["customfield_10016"] = request.work_item.story_points
+    
+    # Try to create Jira issue with retry
+    try:
+        jira_response = await create_jira_issue_with_retry(jira_issue)
+        jira_issue_key = jira_response["key"]
+        jira_issue_id = jira_response["id"]
+        
+        logger.info(
+            f"Jira issue created successfully: {jira_issue_key} "
+            f"(decision_id: {request.decision_id})"
+        )
+        
+        # Store executed action
+        store_executed_action(
+            executed_action_id,
+            request.decision_id,
+            request.primary_human_id,
+            request.backup_human_ids,
+            jira_issue_key=jira_issue_key,
+            jira_issue_id=jira_issue_id,
+        )
+        
+        # Link back to work item
+        update_work_item_jira_key(request.work_item_id, jira_issue_key)
+        
+        return ExecuteDecisionResponse(
+            executed_action_id=executed_action_id,
+            jira_issue_key=jira_issue_key,
+            jira_issue_id=jira_issue_id,
+            assigned_human_id=request.primary_human_id,
+            created_at=datetime.now().isoformat(),
+            message="Jira issue created successfully",
+            fallback_used=False,
+        )
+    
+    except Exception as jira_error:
+        # Fallback: store rendered message in database
+        logger.error(
+            f"Jira API failed for decision {request.decision_id}: {jira_error}. "
+            f"Using fallback storage."
+        )
+        
+        fallback_message = (
+            f"Jira Issue Creation Failed\n\n"
+            f"Decision ID: {request.decision_id}\n"
+            f"Work Item ID: {request.work_item_id}\n"
+            f"Service: {request.work_item.service}\n"
+            f"Severity: {request.work_item.severity}\n"
+            f"Primary Assignee: {request.primary_human_id}\n"
+            f"Backup Assignees: {', '.join(request.backup_human_ids) if request.backup_human_ids else 'None'}\n\n"
+            f"Description:\n{request.work_item.description}\n\n"
+            f"Evidence:\n" + "\n".join([f"- {ev.text}" for ev in request.evidence])
+        )
+        
+        # Store executed action with fallback message
+        store_executed_action(
+            executed_action_id,
+            request.decision_id,
+            request.primary_human_id,
+            request.backup_human_ids,
+            fallback_message=fallback_message,
+        )
+        
+        return ExecuteDecisionResponse(
+            executed_action_id=executed_action_id,
+            jira_issue_key=None,
+            jira_issue_id=None,
+            assigned_human_id=request.primary_human_id,
+            created_at=datetime.now().isoformat(),
+            message="Jira issue creation failed, stored in database as fallback",
+            fallback_used=True,
+            execution_target="jira",
+        )
 
 
 if __name__ == "__main__":
