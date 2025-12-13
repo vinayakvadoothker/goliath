@@ -776,27 +776,27 @@ def test_llm_preprocessing():
 
 ### Service Scaffolding (Hour 2-3)
 - [ ] Scaffold `/services/ingest/` (FastAPI + PostgreSQL)
-- [ ] Scaffold `/services/monitoring/` (FastAPI, background task)
-- [ ] Add `/healthz` endpoints to both
+- [x] Scaffold `/services/monitoring/` (FastAPI, background task)
+- [x] Add `/healthz` endpoints to both
 - [ ] Add request logging middleware
 - [ ] Add correlation ID middleware
 - [ ] Setup PostgreSQL connection (Ingest)
-- [ ] Setup LLM client (Monitoring)
+- [x] Setup LLM client (Monitoring)
 
 ### Monitoring Service (Hour 4-5)
-- [ ] Implement monitoring loop (background task)
-- [ ] Implement error detection logic
-- [ ] Implement LLM log preprocessing
-- [ ] Implement WorkItem creation via Ingest
-- [ ] Implement `GET /healthz` endpoint
-- [ ] Implement `POST /monitoring/start` endpoint
-- [ ] Implement `POST /monitoring/stop` endpoint
-- [ ] Implement `GET /monitoring/status` endpoint
-- [ ] Test monitoring loop
-- [ ] Test error detection
+- [x] Implement monitoring loop (background task)
+- [x] Implement error detection logic
+- [x] Implement LLM log preprocessing
+- [x] Implement WorkItem creation via Ingest
+- [x] Implement `GET /healthz` endpoint
+- [x] Implement `POST /monitoring/start` endpoint
+- [x] Implement `POST /monitoring/stop` endpoint
+- [x] Implement `GET /monitoring/status` endpoint
+- [x] Test monitoring loop
+- [x] Test error detection
 
 ### Ingest Service (Hour 5-6)
-- [ ] Implement `POST /ingest/demo` endpoint
+- [x] Implement `POST /ingest/demo` endpoint
 - [ ] Implement `POST /webhooks/jira` endpoint
 - [ ] Implement `POST /work-items` endpoint
 - [ ] Implement `GET /work-items` endpoint
@@ -811,11 +811,11 @@ def test_llm_preprocessing():
 - [ ] Write tests
 
 ### Monitoring Service Completion (Hour 16-18)
-- [ ] Implement multiple error types
-- [ ] Implement severity determination
-- [ ] Implement error pattern simulation (burst, gradual, intermittent)
-- [ ] Test all error patterns
-- [ ] Test integration with Ingest
+- [x] Implement multiple error types
+- [x] Implement severity determination
+- [x] Implement error pattern simulation (burst, gradual, intermittent)
+- [x] Test all error patterns
+- [x] Test integration with Ingest
 
 ### Documentation
 - [ ] Create `/services/ingest/README.md`

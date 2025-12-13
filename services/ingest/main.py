@@ -44,18 +44,27 @@ async def health():
     return {"status": "healthy", "service": "ingest"}
 
 
+class DemoWorkItemRequest(BaseModel):
+    service: str
+    severity: str
+    description: str
+    type: Optional[str] = "incident"
+    story_points: Optional[int] = None
+    impact: Optional[str] = None
+    raw_log: Optional[str] = None
+
+
 @app.post("/ingest/demo")
-async def create_demo_work_item():
-    """Create a demo work item for testing"""
+async def create_demo_work_item(request: DemoWorkItemRequest):
+    """Create a demo work item for testing - simulates monitoring/observability systems"""
+    work_item_id = f"wi-{datetime.now().strftime('%Y%m%d%H%M%S')}-{os.urandom(4).hex()}"
+    
     work_item = {
-        "id": f"demo-{datetime.now().isoformat()}",
-        "type": "incident",
-        "service": "api-service",
-        "severity": "sev2",
-        "description": "Demo work item for testing",
+        "work_item_id": work_item_id,
         "created_at": datetime.now().isoformat(),
-        "origin_system": "demo"
+        "message": "WorkItem created successfully"
     }
+    
     return work_item
 
 

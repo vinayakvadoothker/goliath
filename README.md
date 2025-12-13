@@ -2,6 +2,8 @@
 
 **Intelligent Incident Routing System** - Decision-grade incident routing with evidence-backed assignment, bounded execution, outcome learning, and audit replay.
 
+> 📖 **New to Goliath?** Start here: [**MISSION.md**](MISSION.md) - Complete mission, vision, why, what, and how.
+
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 
 ## 🚀 Quick Start
@@ -541,6 +543,91 @@ make logs SERVICE=your-service
 # Rebuild and restart after changes
 make rebuild SERVICE=your-service
 ```
+
+---
+
+## 📊 Monitoring Service (Auto-Start)
+
+**The Monitoring Service automatically starts when the service starts** - no separate command needed!
+
+### What It Does
+
+The Monitoring Service simulates real monitoring/observability systems (like Datadog, PagerDuty):
+
+1. **Continuously logs** normal messages (INFO, WARN, DEBUG) every 5 seconds
+2. **Detects errors** with 5% probability per cycle (configurable)
+3. **Creates WorkItems** via Ingest service when errors are detected
+4. **LLM preprocesses** error logs (cleans, normalizes)
+5. **Determines severity** (sev1, sev2, sev3) based on error type
+
+### Auto-Start Behavior
+
+**By default, the monitoring loop starts automatically** when the service starts:
+
+```bash
+# When you run make setup or make start, Monitoring Service:
+# 1. Starts the container
+# 2. Auto-starts the monitoring loop
+# 3. Begins logging and detecting errors immediately
+```
+
+**No action needed** - it just works! You'll see logs like:
+```
+[INFO] Processing 123 requests/sec
+[INFO] Cache hit rate: 95%
+[ERROR] High error rate detected: 500 errors/sec on /api/v1/users
+```
+
+### Manual Control
+
+You can start/stop the monitoring loop manually:
+
+```bash
+# Check if monitoring is running
+curl http://localhost:8006/monitoring/status
+
+# Start monitoring loop (if stopped)
+curl -X POST http://localhost:8006/monitoring/start
+
+# Stop monitoring loop (if running)
+curl -X POST http://localhost:8006/monitoring/stop
+```
+
+### Configuration
+
+Control auto-start behavior via environment variable:
+
+```bash
+# In .env or docker-compose.yml
+MONITORING_AUTO_START=true   # Auto-start on service start (default)
+MONITORING_AUTO_START=false  # Don't auto-start (must start manually)
+```
+
+### Viewing Monitoring Logs
+
+```bash
+# View Monitoring service logs
+make logs SERVICE=monitoring
+
+# You'll see:
+# - Normal log messages every 5 seconds
+# - Error detections when they occur
+# - WorkItem creation confirmations
+```
+
+### What Happens When Errors Are Detected
+
+1. **Error detected** → Monitoring Service generates realistic error message
+2. **LLM preprocesses** → Cleans and normalizes the error log
+3. **Creates WorkItem** → Calls Ingest service `POST /ingest/demo`
+4. **Decision service routes** → Routes to appropriate person
+5. **Executor creates Jira issue** → Creates ticket with assigned assignee
+
+**The full flow happens automatically!** Just watch the logs to see incidents being created.
+
+For complete documentation, see: [`services/monitoring/README.md`](services/monitoring/README.md)
+
+---
 
 ---
 
