@@ -927,17 +927,17 @@ def test_seeding_script():
 ## Complete Checklist
 
 ### Infrastructure (Hour 0-1)
-- [ ] Create `/infra/docker-compose.yml` with all services
-- [ ] Create `/contracts/types.ts` with core types
-- [ ] Create `.env.example` with all variables
-- [ ] Setup PostgreSQL database
-- [ ] Setup Weaviate instance
-- [ ] Create schemas for both databases
+- [x] Create `/infra/docker-compose.yml` with all services
+- [x] Create `/contracts/types.ts` with core types
+- [x] Create `.env.example` with all variables
+- [x] Setup PostgreSQL database
+- [x] Setup Weaviate instance
+- [x] Create schemas for both databases
 
 ### Service Scaffolding (Hour 2-3)
-- [ ] Scaffold `/services/decision/` (FastAPI)
-- [ ] Scaffold `/services/jira-simulator/` (FastAPI)
-- [ ] Add `/healthz` endpoints to both
+- [x] Scaffold `/services/decision/` (FastAPI)
+- [x] Scaffold `/services/jira-simulator/` (FastAPI)
+- [x] Add `/healthz` endpoints to both
 - [ ] Add request logging middleware
 - [ ] Add correlation ID middleware
 - [ ] Setup LLM client utilities
@@ -972,8 +972,8 @@ def test_seeding_script():
 - [ ] Implement `PUT /rest/api/3/issue/:key`
 - [ ] Implement `GET /rest/api/3/user/search`
 - [ ] Implement `GET /rest/api/3/project`
-- [ ] Create database schema
-- [ ] Create seeding script (`/scripts/seed_jira_data.py`)
+- [x] Create database schema
+- [x] Create seeding script (`/scripts/seed_jira_data.py`)
 - [ ] Test JQL parser
 - [ ] Test all endpoints
 - [ ] Verify exact Jira API compatibility
@@ -987,9 +987,9 @@ def test_seeding_script():
 - [ ] Test seeding script
 
 ### Integration (Hour 48-50)
-- [ ] Update docker-compose.yml with all service URLs
-- [ ] Test all services start correctly
-- [ ] Verify health checks
+- [x] Update docker-compose.yml with all service URLs
+- [x] Test all services start correctly
+- [x] Verify health checks
 - [ ] Test service-to-service calls
 
 ### Documentation

@@ -23,7 +23,12 @@ try:
 except ImportError:
     print("⚠️  faker not installed. Installing...")
     import subprocess
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "faker", "psycopg2-binary"])
+    try:
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "faker", "psycopg2-binary"])
+    except subprocess.CalledProcessError:
+        # Try with --break-system-packages for Python 3.13+
+        print("⚠️  Trying with --break-system-packages flag...")
+        subprocess.check_call([sys.executable, "-m", "pip", "install", "--user", "--break-system-packages", "faker", "psycopg2-binary"])
     from faker import Faker
 
 fake = Faker()
