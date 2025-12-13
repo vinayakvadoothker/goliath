@@ -1,0 +1,274 @@
+version: '3.8'
+
+services:
+  # ============================================================================
+  # Infrastructure Services
+  # ============================================================================
+  
+  postgres:
+    image: postgres:15-alpine
+    container_name: goliath-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: goliath
+      POSTGRES_USER: goliath
+      POSTGRES_PASSWORD: goliath
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init_db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U goliath"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  weaviate:
+    image: semitechnologies/weaviate:1.22.4
+    container_name: goliath-weaviate
+    ports:
+      - "8081:8080"
+    environment:
+      QUERY_DEFAULTS_LIMIT: 25
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'true'
+      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
+      DEFAULT_VECTORIZER_MODULE: 'none'
+      ENABLE_MODULES: 'text2vec-openai,text2vec-cohere,text2vec-huggingface,ref2vec-centroid,generative-openai,qna-openai'
+      CLUSTER_HOSTNAME: 'node1'
+    volumes:
+      - weaviate_data:/var/lib/weaviate
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/v1/.well-known/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  # ============================================================================
+  # Application Services
+  # ============================================================================
+
+  jira-simulator:
+    build:
+      context: ../services/jira-simulator
+      dockerfile: Dockerfile
+    container_name: goliath-jira-simulator
+    ports:
+      - "8080:8080"
+    environment:
+      POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
+      JIRA_SIMULATOR_PORT: 8080
+      JIRA_SIMULATOR_SEED_USERS: ${JIRA_SIMULATOR_SEED_USERS:-200}
+      JIRA_SIMULATOR_SEED_CLOSED_TICKETS: ${JIRA_SIMULATOR_SEED_CLOSED_TICKETS:-5000}
+      JIRA_SIMULATOR_SEED_OPEN_TICKETS: ${JIRA_SIMULATOR_SEED_OPEN_TICKETS:-1000}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  ingest:
+    build:
+      context: ../services/ingest
+      dockerfile: Dockerfile
+    container_name: goliath-ingest
+    ports:
+      - "8001:8000"
+    environment:
+      INGEST_SERVICE_PORT: 8000
+      POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
+      WEAVIATE_URL: http://weaviate:8080
+      LEARNER_SERVICE_URL: http://learner:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      weaviate:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  decision:
+    build:
+      context: ../services/decision
+      dockerfile: Dockerfile
+    container_name: goliath-decision
+    ports:
+      - "8002:8000"
+    environment:
+      DECISION_SERVICE_PORT: 8000
+      POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
+      WEAVIATE_URL: http://weaviate:8080
+      LEARNER_SERVICE_URL: http://learner:8000
+      EXPLAIN_SERVICE_URL: http://explain:8000
+      INGEST_SERVICE_URL: http://ingest:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      weaviate:
+        condition: service_healthy
+      learner:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  learner:
+    build:
+      context: ../services/learner
+      dockerfile: Dockerfile
+    container_name: goliath-learner
+    ports:
+      - "8003:8000"
+    environment:
+      LEARNER_SERVICE_PORT: 8000
+      POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
+      WEAVIATE_URL: http://weaviate:8080
+      JIRA_SIMULATOR_URL: http://jira-simulator:8080
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      weaviate:
+        condition: service_healthy
+      jira-simulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  executor:
+    build:
+      context: ../services/executor
+      dockerfile: Dockerfile
+    container_name: goliath-executor
+    ports:
+      - "8004:8000"
+    environment:
+      EXECUTOR_SERVICE_PORT: 8000
+      POSTGRES_URL: postgresql://goliath:goliath@postgres:5432/goliath
+      JIRA_SIMULATOR_URL: http://jira-simulator:8080
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL:-}
+      SLACK_ENABLED: ${SLACK_ENABLED:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      jira-simulator:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  explain:
+    build:
+      context: ../services/explain
+      dockerfile: Dockerfile
+    container_name: goliath-explain
+    ports:
+      - "8005:8000"
+    environment:
+      EXPLAIN_SERVICE_PORT: 8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  monitoring:
+    build:
+      context: ../services/monitoring
+      dockerfile: Dockerfile
+    container_name: goliath-monitoring
+    ports:
+      - "8006:8000"
+    environment:
+      MONITORING_SERVICE_PORT: 8000
+      MONITORING_SERVICE_NAME: ${MONITORING_SERVICE_NAME:-api-service}
+      MONITORING_ERROR_PROBABILITY: ${MONITORING_ERROR_PROBABILITY:-0.05}
+      MONITORING_LOG_INTERVAL: ${MONITORING_LOG_INTERVAL:-5}
+      MONITORING_INGEST_URL: http://ingest:8000
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      ingest:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+  ui:
+    build:
+      context: ../apps/ui
+      dockerfile: Dockerfile
+    container_name: goliath-ui
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8001
+      NEXT_PUBLIC_DECISION_URL: http://localhost:8002
+      NEXT_PUBLIC_LEARNER_URL: http://localhost:8003
+      NEXT_PUBLIC_GRAPH_URL: http://localhost:8002
+      NODE_ENV: development
+    depends_on:
+      - ingest
+      - decision
+      - learner
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - goliath-network
+
+volumes:
+  postgres_data:
+  weaviate_data:
+
+networks:
+  goliath-network:
+    driver: bridge
+
