@@ -130,3 +130,37 @@ CREATE INDEX IF NOT EXISTS idx_decision_candidates_decision_id ON decision_candi
 CREATE INDEX IF NOT EXISTS idx_decision_candidates_human_id ON decision_candidates(human_id);
 CREATE INDEX IF NOT EXISTS idx_constraint_results_decision_id ON constraint_results(decision_id);
 
+-- Learner Service Tables
+CREATE TABLE IF NOT EXISTS human_service_stats (
+  human_id TEXT NOT NULL,
+  service TEXT NOT NULL,
+  fit_score REAL DEFAULT 0.5 CHECK (fit_score >= 0 AND fit_score <= 1),
+  resolves_count INTEGER DEFAULT 0,
+  transfers_count INTEGER DEFAULT 0,
+  last_resolved_at TIMESTAMP,
+  PRIMARY KEY (human_id, service),
+  FOREIGN KEY (human_id) REFERENCES humans(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS human_load (
+  human_id TEXT NOT NULL,
+  pages_7d INTEGER DEFAULT 0,
+  active_items INTEGER DEFAULT 0,
+  last_updated TIMESTAMP NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (human_id),
+  FOREIGN KEY (human_id) REFERENCES humans(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS outcomes_dedupe (
+  event_id TEXT PRIMARY KEY,
+  processed_at TIMESTAMP NOT NULL DEFAULT NOW()
+);
+
+-- Indexes for Learner Service
+CREATE INDEX IF NOT EXISTS idx_human_service_stats_human_id ON human_service_stats(human_id);
+CREATE INDEX IF NOT EXISTS idx_human_service_stats_service ON human_service_stats(service);
+CREATE INDEX IF NOT EXISTS idx_human_service_stats_last_resolved_at ON human_service_stats(last_resolved_at);
+CREATE INDEX IF NOT EXISTS idx_human_load_human_id ON human_load(human_id);
+CREATE INDEX IF NOT EXISTS idx_outcomes_dedupe_event_id ON outcomes_dedupe(event_id);
+CREATE INDEX IF NOT EXISTS idx_outcomes_dedupe_processed_at ON outcomes_dedupe(processed_at);
+
