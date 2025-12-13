@@ -88,3 +88,45 @@ CREATE INDEX IF NOT EXISTS idx_co_worked_edges_human1_id ON co_worked_edges(huma
 CREATE INDEX IF NOT EXISTS idx_co_worked_edges_human2_id ON co_worked_edges(human2_id);
 CREATE INDEX IF NOT EXISTS idx_co_worked_edges_work_item_id ON co_worked_edges(work_item_id);
 
+-- Decision Service Tables
+CREATE TABLE IF NOT EXISTS decisions (
+  id TEXT PRIMARY KEY,
+  work_item_id TEXT UNIQUE NOT NULL,
+  primary_human_id TEXT NOT NULL,
+  backup_human_ids TEXT, -- JSON array
+  confidence REAL NOT NULL CHECK (confidence >= 0 AND confidence <= 1),
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (work_item_id) REFERENCES work_items(id)
+);
+
+-- Decision candidates (for audit trail)
+CREATE TABLE IF NOT EXISTS decision_candidates (
+  decision_id TEXT NOT NULL,
+  human_id TEXT NOT NULL,
+  score REAL NOT NULL,
+  rank INTEGER NOT NULL,
+  filtered BOOLEAN DEFAULT FALSE,
+  filter_reason TEXT,
+  score_breakdown TEXT, -- JSON: {fit_score: 0.8, recency: 0.6, severity_match: 0.9, capacity: 0.7, vector_similarity: 0.85}
+  PRIMARY KEY (decision_id, human_id),
+  FOREIGN KEY (decision_id) REFERENCES decisions(id) ON DELETE CASCADE
+);
+
+-- Constraint results
+CREATE TABLE IF NOT EXISTS constraint_results (
+  decision_id TEXT NOT NULL,
+  constraint_name TEXT NOT NULL,
+  passed BOOLEAN NOT NULL,
+  reason TEXT,
+  PRIMARY KEY (decision_id, constraint_name),
+  FOREIGN KEY (decision_id) REFERENCES decisions(id) ON DELETE CASCADE
+);
+
+-- Indexes for Decision Service
+CREATE INDEX IF NOT EXISTS idx_decisions_work_item_id ON decisions(work_item_id);
+CREATE INDEX IF NOT EXISTS idx_decisions_primary_human_id ON decisions(primary_human_id);
+CREATE INDEX IF NOT EXISTS idx_decisions_created_at ON decisions(created_at);
+CREATE INDEX IF NOT EXISTS idx_decision_candidates_decision_id ON decision_candidates(decision_id);
+CREATE INDEX IF NOT EXISTS idx_decision_candidates_human_id ON decision_candidates(human_id);
+CREATE INDEX IF NOT EXISTS idx_constraint_results_decision_id ON constraint_results(decision_id);
+

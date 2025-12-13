@@ -52,12 +52,14 @@ You are the **Lead** and own three critical components:
 - `PUT /rest/api/3/issue/:key` - Update issue
 - `GET /rest/api/3/user/search` - Search users
 - `GET /rest/api/3/project` - List projects
+- **Outcome Generation** - Automatically generates outcomes when issues are completed/reassigned (CRITICAL for learning loop)
 
 **Why it exists:**
 - **No cloud dependencies**: Everything runs locally
 - **Realistic data**: 200 people, 5000+ closed tickets, 1000+ open tickets
 - **Exact API compatibility**: Same endpoints as real Jira, so code works in production
 - **Independent testing**: Each developer can test without real Jira
+- **Learning loop support**: Automatically generates outcomes so the system learns from completions/reassignments
 
 ---
 
@@ -77,6 +79,7 @@ You are the **Lead** and own three critical components:
 - **Infrastructure dependency**: All services need Jira for learning/execution
 - **Realistic testing**: 200 people, 5000+ tickets = production-like data
 - **No external dependencies**: Everything runs locally
+- **Learning loop critical**: Outcome generation enables the learning loop to work automatically
 
 ---
 
@@ -164,6 +167,31 @@ You are the **Lead** and own three critical components:
 - ✅ JQL parser working
 - ✅ Seeding script complete
 - ✅ Database schema complete
+
+### Hour 22-26: Jira Simulator Outcome Generation (CRITICAL FOR LEARNING LOOP)
+
+**What to build:**
+- Background process that monitors issue status changes
+- Automatic outcome generation when issues transition to "Done"
+- Automatic outcome generation when issues are reassigned
+- Webhook simulation (or direct API call) to notify Ingest service
+- Polling endpoint for Ingest to check for completed issues (alternative approach)
+- Outcome deduplication (don't generate same outcome twice)
+- Configuration for outcome generation rate (for testing/demo)
+
+**Why this is critical:**
+- **Learning loop depends on this**: Without outcomes, Learner service can't update fit_scores
+- **Automatic operation**: System should learn automatically when issues are completed
+- **Realistic simulation**: Simulates what real Jira webhooks would do
+
+**Deliverables:**
+- ✅ Background process monitoring issue status changes
+- ✅ Outcome generation when status → "Done"
+- ✅ Outcome generation when assignee changes (reassigned)
+- ✅ Integration with Ingest service (webhook or polling)
+- ✅ Outcome deduplication working
+- ✅ Configurable outcome generation rate
+- ✅ Tests for outcome generation
 
 ### Hour 28-32: Decision Service Testing
 
@@ -281,6 +309,26 @@ CREATE TABLE jira_issue_history (
   changed_by_account_id TEXT,
   FOREIGN KEY (issue_key) REFERENCES jira_issues(key)
 );
+
+-- Jira outcomes (for deduplication and polling)
+CREATE TABLE jira_outcomes (
+  event_id TEXT PRIMARY KEY,
+  issue_key TEXT NOT NULL,
+  type TEXT NOT NULL, -- "resolved", "reassigned"
+  actor_id TEXT NOT NULL,
+  service TEXT NOT NULL,
+  timestamp TIMESTAMP NOT NULL,
+  original_assignee_id TEXT,
+  new_assignee_id TEXT,
+  work_item_id TEXT, -- If linked to work item
+  processed BOOLEAN DEFAULT FALSE, -- Whether Ingest has processed it
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (issue_key) REFERENCES jira_issues(key)
+);
+
+-- Index for polling endpoint
+CREATE INDEX idx_jira_outcomes_timestamp ON jira_outcomes(timestamp);
+CREATE INDEX idx_jira_outcomes_processed ON jira_outcomes(processed);
 ```
 
 ### Weaviate Schema
@@ -566,6 +614,71 @@ CREATE TABLE jira_issue_history (
 ```
 
 **Response (204 No Content)**
+
+#### `GET /rest/api/3/outcomes/pending` (NEW - Outcome Generation)
+
+**Purpose**: Polling endpoint for Ingest service to check for newly completed/reassigned issues. Alternative to webhooks.
+
+**Query Parameters:**
+- `since`: string (optional) - ISO 8601 timestamp, only return outcomes after this time
+- `limit`: number (default: 50, max: 100)
+
+**Response (200 OK):**
+```typescript
+{
+  outcomes: Array<{
+    event_id: string;        // Unique ID for dedupe
+    issue_key: string;       // e.g., "PROJ-123"
+    type: "resolved" | "reassigned";
+    actor_id: string;        // Jira accountId of person who completed/reassigned
+    service: string;         // Derived from project key
+    timestamp: string;       // ISO 8601
+    original_assignee_id?: string;  // If reassigned, original assignee
+    new_assignee_id?: string;      // If reassigned, new assignee
+    work_item_id?: string;   // If linked to work item (from description)
+  }>;
+  next_poll_after: string;   // ISO 8601 timestamp for next poll
+}
+```
+
+**Processing Logic:**
+1. Query `jira_issues` for issues that changed status to "Done" since last poll
+2. Query `jira_issue_history` for assignee changes since last poll
+3. Generate outcome events for each change
+4. Store outcomes in `jira_outcomes` table (for dedupe)
+5. Return outcomes to Ingest service
+
+**Error Responses:**
+- `400 Bad Request`: Invalid timestamp format
+- `500 Internal Server Error`: Database error
+
+**Alternative: Webhook Simulation**
+
+Instead of polling, Jira Simulator can simulate webhooks by calling Ingest service directly when status changes:
+
+```python
+# When issue status changes to "Done" in PUT /rest/api/3/issue/:key
+if new_status == "Done" and old_status != "Done":
+    outcome = {
+        "event_id": f"jira-{issue_key}-{timestamp}",
+        "issue_key": issue_key,
+        "type": "resolved",
+        "actor_id": assignee_account_id,
+        "service": project_to_service(project_key),
+        "timestamp": datetime.now().isoformat()
+    }
+    
+    # Call Ingest service
+    async with httpx.AsyncClient() as client:
+        await client.post(
+            f"{INGEST_SERVICE_URL}/webhooks/jira",
+            json={"outcome": outcome}
+        )
+```
+
+**Recommendation**: Implement both approaches:
+- **Polling endpoint** (`GET /rest/api/3/outcomes/pending`) - More reliable, Ingest controls timing
+- **Webhook simulation** (optional) - More realistic, but requires Ingest to be available
 
 ---
 
@@ -862,6 +975,314 @@ def test_confidence_calculation():
     assert confidence > 0.7  # High confidence due to big gap
 ```
 
+### Jira Simulator Outcome Generation Implementation
+
+**Background Process:**
+```python
+# services/jira-simulator/outcome_generator.py
+
+import asyncio
+import httpx
+from datetime import datetime, timedelta
+from typing import List, Dict, Any
+import logging
+
+logger = logging.getLogger(__name__)
+
+class OutcomeGenerator:
+    """Generates outcomes when Jira issues are completed or reassigned."""
+    
+    def __init__(self, db_connection, ingest_url: str, poll_interval: int = 30):
+        self.db = db_connection
+        self.ingest_url = ingest_url
+        self.poll_interval = poll_interval  # seconds
+        self.running = False
+    
+    async def start(self):
+        """Start background process."""
+        self.running = True
+        logger.info("Outcome generator started")
+        
+        while self.running:
+            try:
+                await self._check_for_outcomes()
+                await asyncio.sleep(self.poll_interval)
+            except Exception as e:
+                logger.error(f"Outcome generator error: {e}", exc_info=True)
+                await asyncio.sleep(self.poll_interval)
+    
+    async def stop(self):
+        """Stop background process."""
+        self.running = False
+        logger.info("Outcome generator stopped")
+    
+    async def _check_for_outcomes(self):
+        """Check for new outcomes and send to Ingest."""
+        # Get issues that changed status to "Done" since last check
+        resolved_outcomes = self._get_resolved_outcomes()
+        
+        # Get issues that were reassigned since last check
+        reassigned_outcomes = self._get_reassigned_outcomes()
+        
+        all_outcomes = resolved_outcomes + reassigned_outcomes
+        
+        if not all_outcomes:
+            return
+        
+        logger.info(f"Found {len(all_outcomes)} new outcomes")
+        
+        # Send to Ingest service
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            for outcome in all_outcomes:
+                try:
+                    # Store outcome in database (for dedupe)
+                    self._store_outcome(outcome)
+                    
+                    # Send to Ingest
+                    response = await client.post(
+                        f"{self.ingest_url}/webhooks/jira",
+                        json={"outcome": outcome}
+                    )
+                    response.raise_for_status()
+                    
+                    # Mark as processed
+                    self._mark_outcome_processed(outcome['event_id'])
+                    
+                    logger.info(f"Outcome {outcome['event_id']} sent to Ingest")
+                except Exception as e:
+                    logger.error(f"Failed to send outcome {outcome['event_id']}: {e}")
+    
+    def _get_resolved_outcomes(self) -> List[Dict[str, Any]]:
+        """Get issues that were resolved since last check."""
+        # Query jira_issues for status changes to "Done"
+        # Compare with jira_issue_history to find new resolutions
+        query = """
+            SELECT 
+                i.key,
+                i.assignee_account_id,
+                i.project_key,
+                i.resolved_at,
+                h.changed_at
+            FROM jira_issues i
+            JOIN jira_issue_history h ON i.key = h.issue_key
+            WHERE i.status_name = 'Done'
+            AND h.field = 'status'
+            AND h.to_value = 'Done'
+            AND h.changed_at > NOW() - INTERVAL '1 minute'
+            AND NOT EXISTS (
+                SELECT 1 FROM jira_outcomes o
+                WHERE o.issue_key = i.key
+                AND o.type = 'resolved'
+            )
+        """
+        
+        results = execute_query(query)
+        outcomes = []
+        
+        for row in results:
+            # Map project key to service
+            service = self._project_to_service(row['project_key'])
+            
+            outcome = {
+                "event_id": f"jira-resolved-{row['key']}-{row['changed_at'].timestamp()}",
+                "issue_key": row['key'],
+                "type": "resolved",
+                "actor_id": row['assignee_account_id'],
+                "service": service,
+                "timestamp": row['resolved_at'].isoformat() if row['resolved_at'] else row['changed_at'].isoformat()
+            }
+            outcomes.append(outcome)
+        
+        return outcomes
+    
+    def _get_reassigned_outcomes(self) -> List[Dict[str, Any]]:
+        """Get issues that were reassigned since last check."""
+        query = """
+            SELECT 
+                i.key,
+                h.from_value as original_assignee,
+                h.to_value as new_assignee,
+                i.project_key,
+                h.changed_at
+            FROM jira_issues i
+            JOIN jira_issue_history h ON i.key = h.issue_key
+            WHERE h.field = 'assignee'
+            AND h.changed_at > NOW() - INTERVAL '1 minute'
+            AND h.from_value IS NOT NULL
+            AND h.to_value IS NOT NULL
+            AND NOT EXISTS (
+                SELECT 1 FROM jira_outcomes o
+                WHERE o.issue_key = i.key
+                AND o.type = 'reassigned'
+                AND o.timestamp >= h.changed_at
+            )
+        """
+        
+        results = execute_query(query)
+        outcomes = []
+        
+        for row in results:
+            service = self._project_to_service(row['project_key'])
+            
+            outcome = {
+                "event_id": f"jira-reassigned-{row['key']}-{row['changed_at'].timestamp()}",
+                "issue_key": row['key'],
+                "type": "reassigned",
+                "actor_id": row['new_assignee'],  # New assignee
+                "service": service,
+                "timestamp": row['changed_at'].isoformat(),
+                "original_assignee_id": row['original_assignee'],
+                "new_assignee_id": row['new_assignee']
+            }
+            outcomes.append(outcome)
+        
+        return outcomes
+    
+    def _store_outcome(self, outcome: Dict[str, Any]):
+        """Store outcome in database for deduplication."""
+        query = """
+            INSERT INTO jira_outcomes 
+            (event_id, issue_key, type, actor_id, service, timestamp, 
+             original_assignee_id, new_assignee_id, work_item_id)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ON CONFLICT (event_id) DO NOTHING
+        """
+        
+        execute_update(query, [
+            outcome['event_id'],
+            outcome['issue_key'],
+            outcome['type'],
+            outcome['actor_id'],
+            outcome['service'],
+            outcome['timestamp'],
+            outcome.get('original_assignee_id'),
+            outcome.get('new_assignee_id'),
+            outcome.get('work_item_id')
+        ])
+    
+    def _mark_outcome_processed(self, event_id: str):
+        """Mark outcome as processed by Ingest."""
+        query = """
+            UPDATE jira_outcomes
+            SET processed = TRUE
+            WHERE event_id = %s
+        """
+        execute_update(query, [event_id])
+    
+    def _project_to_service(self, project_key: str) -> str:
+        """Map Jira project key to service name."""
+        # Default mapping
+        mapping = {
+            "API": "api-service",
+            "PAYMENT": "payment-service",
+            "FRONTEND": "frontend-app",
+            "DATA": "data-pipeline",
+            "INFRA": "infrastructure"
+        }
+        return mapping.get(project_key, project_key.lower().replace("-", "-"))
+```
+
+**Integration in main.py:**
+```python
+# services/jira-simulator/main.py
+
+from outcome_generator import OutcomeGenerator
+
+# On service startup
+outcome_generator = None
+
+@app.on_event("startup")
+async def startup_event():
+    global outcome_generator
+    
+    ingest_url = os.getenv("INGEST_SERVICE_URL", "http://ingest:8000")
+    poll_interval = int(os.getenv("JIRA_OUTCOME_POLL_INTERVAL", "30"))  # seconds
+    
+    outcome_generator = OutcomeGenerator(
+        db_connection=get_db_connection(),
+        ingest_url=ingest_url,
+        poll_interval=poll_interval
+    )
+    
+    # Start background task
+    asyncio.create_task(outcome_generator.start())
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    global outcome_generator
+    if outcome_generator:
+        await outcome_generator.stop()
+```
+
+**Polling Endpoint Implementation:**
+```python
+@app.get("/rest/api/3/outcomes/pending")
+async def get_pending_outcomes(
+    since: Optional[str] = Query(None, description="ISO 8601 timestamp"),
+    limit: int = Query(50, ge=1, le=100)
+):
+    """Get pending outcomes for Ingest service to process."""
+    try:
+        since_timestamp = None
+        if since:
+            since_timestamp = datetime.fromisoformat(since.replace('Z', '+00:00'))
+        else:
+            # Default: last 5 minutes
+            since_timestamp = datetime.now() - timedelta(minutes=5)
+        
+        query = """
+            SELECT 
+                event_id,
+                issue_key,
+                type,
+                actor_id,
+                service,
+                timestamp,
+                original_assignee_id,
+                new_assignee_id,
+                work_item_id
+            FROM jira_outcomes
+            WHERE timestamp >= %s
+            AND processed = FALSE
+            ORDER BY timestamp ASC
+            LIMIT %s
+        """
+        
+        results = execute_query(query, [since_timestamp, limit])
+        
+        outcomes = []
+        for row in results:
+            outcome = {
+                "event_id": row['event_id'],
+                "issue_key": row['issue_key'],
+                "type": row['type'],
+                "actor_id": row['actor_id'],
+                "service": row['service'],
+                "timestamp": row['timestamp'].isoformat(),
+            }
+            
+            if row['original_assignee_id']:
+                outcome['original_assignee_id'] = row['original_assignee_id']
+            if row['new_assignee_id']:
+                outcome['new_assignee_id'] = row['new_assignee_id']
+            if row['work_item_id']:
+                outcome['work_item_id'] = row['work_item_id']
+            
+            outcomes.append(outcome)
+        
+        # Next poll should be 30 seconds from now
+        next_poll_after = (datetime.now() + timedelta(seconds=30)).isoformat()
+        
+        return {
+            "outcomes": outcomes,
+            "next_poll_after": next_poll_after
+        }
+    
+    except Exception as e:
+        logger.error(f"Get pending outcomes failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get outcomes: {str(e)}")
+```
+
 ### Jira Simulator Testing
 
 **1. Test JQL parser:**
@@ -904,7 +1325,105 @@ def test_jira_create_issue():
     
     assert response['key'].startswith('PROJ-')
     assert response['id'] is not None
-```
+
+def test_outcome_generation_resolved():
+    """Outcome generated when issue status changes to Done."""
+    # Create issue
+    issue = create_test_issue(status="In Progress")
+    
+    # Update status to Done
+    jira_simulator.update_issue(issue['key'], {
+        "fields": {"status": {"name": "Done"}}
+    })
+    
+    # Wait for outcome generator to process
+    await asyncio.sleep(1)
+    
+    # Check outcome was generated
+    outcomes = jira_simulator.get_pending_outcomes()
+    
+    assert len(outcomes) > 0
+    assert any(o['type'] == 'resolved' and o['issue_key'] == issue['key'] for o in outcomes)
+
+def test_outcome_generation_reassigned():
+    """Outcome generated when issue is reassigned."""
+    # Create issue with assignee
+    issue = create_test_issue(assignee="557058:user1")
+    
+    # Reassign to different user
+    jira_simulator.update_issue(issue['key'], {
+        "fields": {"assignee": {"accountId": "557058:user2"}}
+    })
+    
+    # Wait for outcome generator
+    await asyncio.sleep(1)
+    
+    # Check outcome was generated
+    outcomes = jira_simulator.get_pending_outcomes()
+    
+    assert len(outcomes) > 0
+    reassigned = [o for o in outcomes if o['type'] == 'reassigned' and o['issue_key'] == issue['key']]
+    assert len(reassigned) == 1
+    assert reassigned[0]['original_assignee_id'] == "557058:user1"
+    assert reassigned[0]['new_assignee_id'] == "557058:user2"
+
+def test_outcome_deduplication():
+    """Same outcome not generated twice."""
+    issue = create_test_issue(status="In Progress")
+    
+    # Update to Done twice
+    jira_simulator.update_issue(issue['key'], {
+        "fields": {"status": {"name": "Done"}}
+    })
+    await asyncio.sleep(1)
+    
+    # Update again (should not generate duplicate)
+    jira_simulator.update_issue(issue['key'], {
+        "fields": {"status": {"name": "Done"}}
+    })
+    await asyncio.sleep(1)
+    
+    # Should only have one outcome
+    outcomes = jira_simulator.get_pending_outcomes()
+    resolved = [o for o in outcomes if o['type'] == 'resolved' and o['issue_key'] == issue['key']]
+    assert len(resolved) == 1
+
+def test_outcome_polling_endpoint():
+    """Polling endpoint returns pending outcomes."""
+    # Create and resolve issue
+    issue = create_test_issue(status="In Progress")
+    jira_simulator.update_issue(issue['key'], {
+        "fields": {"status": {"name": "Done"}}
+    })
+    await asyncio.sleep(1)
+    
+    # Poll for outcomes
+    response = jira_simulator.get_pending_outcomes(since=None, limit=50)
+    
+    assert 'outcomes' in response
+    assert 'next_poll_after' in response
+    assert len(response['outcomes']) > 0
+    assert any(o['issue_key'] == issue['key'] for o in response['outcomes'])
+
+def test_outcome_sent_to_ingest():
+    """Outcomes are sent to Ingest service."""
+    # Mock Ingest service
+    with patch('httpx.AsyncClient.post') as mock_post:
+        mock_post.return_value.status_code = 200
+        
+        # Create and resolve issue
+        issue = create_test_issue(status="In Progress")
+        jira_simulator.update_issue(issue['key'], {
+            "fields": {"status": {"name": "Done"}}
+        })
+        
+        # Wait for outcome generator
+        await asyncio.sleep(2)
+        
+        # Check Ingest was called
+        assert mock_post.called
+        call_args = mock_post.call_args
+        assert 'webhooks/jira' in str(call_args)
 
 **2. Test seeding script:**
 
@@ -953,30 +1472,47 @@ def test_seeding_script():
 - [ ] Lock contracts (no changes without approval)
 
 ### Decision Service Core (Hour 6-8)
-- [ ] Implement `POST /decide` endpoint
-- [ ] Implement `GET /decisions/:work_item_id` endpoint
-- [ ] Implement `GET /audit/:work_item_id` endpoint
-- [ ] Implement candidate generation
-- [ ] Implement constraint filtering
-- [ ] Implement scoring algorithm (with severity/capacity matching)
-- [ ] Implement confidence calculation
-- [ ] Implement vector similarity search
-- [ ] Implement knowledge graph updates
-- [ ] Create database schema
-- [ ] Write tests
+- [x] Implement `POST /decide` endpoint
+- [x] Implement `GET /decisions/:work_item_id` endpoint
+- [x] Implement `GET /audit/:work_item_id` endpoint
+- [x] Implement candidate generation
+- [x] Implement constraint filtering
+- [x] Implement scoring algorithm (with severity/capacity matching)
+- [x] Implement confidence calculation
+- [x] Implement vector similarity search
+- [x] Implement knowledge graph updates
+- [x] Create database schema
+- [x] Write tests
 
 ### Jira Simulator (Hour 18-22)
-- [ ] Implement `GET /rest/api/3/search` (with JQL parser)
-- [ ] Implement `POST /rest/api/3/issue`
-- [ ] Implement `GET /rest/api/3/issue/:key`
-- [ ] Implement `PUT /rest/api/3/issue/:key`
-- [ ] Implement `GET /rest/api/3/user/search`
-- [ ] Implement `GET /rest/api/3/project`
+- [x] Implement `GET /rest/api/3/search` (with JQL parser)
+- [x] Implement `POST /rest/api/3/issue`
+- [x] Implement `GET /rest/api/3/issue/:key`
+- [x] Implement `PUT /rest/api/3/issue/:key`
+- [x] Implement `GET /rest/api/3/user/search`
+- [x] Implement `GET /rest/api/3/project`
 - [x] Create database schema
 - [x] Create seeding script (`/scripts/seed_jira_data.py`)
-- [ ] Test JQL parser
-- [ ] Test all endpoints
-- [ ] Verify exact Jira API compatibility
+- [x] Test JQL parser
+- [x] Test all endpoints
+- [x] Verify exact Jira API compatibility
+
+### Jira Simulator Outcome Generation (Hour 22-26) - CRITICAL
+- [ ] Create `jira_outcomes` table in database schema
+- [ ] Implement background process for monitoring status changes
+- [ ] Implement outcome generation when status → "Done"
+- [ ] Implement outcome generation when assignee changes (reassigned)
+- [ ] Implement `GET /rest/api/3/outcomes/pending` polling endpoint
+- [ ] Implement webhook simulation (optional, calls Ingest directly)
+- [ ] Implement outcome deduplication logic
+- [ ] Add project_key → service mapping
+- [ ] Add configuration for poll interval
+- [ ] Test outcome generation (resolved)
+- [ ] Test outcome generation (reassigned)
+- [ ] Test deduplication (same outcome twice)
+- [ ] Test integration with Ingest service
+- [ ] Test polling endpoint
+- [ ] Document outcome generation in README
 
 ### Testing (Hour 28-32)
 - [ ] Test determinism (same inputs → same outputs)
@@ -1025,8 +1561,9 @@ def test_seeding_script():
 - **LLM API**: OpenAI or Anthropic (for entity extraction, evidence generation)
 
 ### Jira Simulator
-- **PostgreSQL**: Issue storage
-- **No external dependencies**: Everything runs locally
+- **PostgreSQL**: Issue storage, outcome storage
+- **Ingest Service**: `POST /webhooks/jira` (for sending outcomes) or Ingest polls `GET /rest/api/3/outcomes/pending`
+- **No external dependencies**: Everything runs locally (except Ingest for outcomes)
 
 ---
 
@@ -1046,6 +1583,9 @@ OPENAI_MODEL=gpt-5.2
 # Jira Simulator
 JIRA_SIMULATOR_PORT=8080
 POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
+INGEST_SERVICE_URL=http://ingest:8000  # For sending outcomes
+JIRA_OUTCOME_POLL_INTERVAL=30  # seconds between outcome checks
+JIRA_OUTCOME_GENERATION_ENABLED=true  # Enable/disable outcome generation
 ```
 
 ---
@@ -1059,6 +1599,8 @@ POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 - ✅ Jira Simulator has exact API compatibility with real Jira
 - ✅ JQL parser handles all required queries
 - ✅ Seeding script creates realistic data (200 people, 5000+ tickets)
+- ✅ Outcome generation works automatically when issues are completed/reassigned
+- ✅ Outcomes are sent to Ingest service (learning loop works)
 
 ---
 
@@ -1078,6 +1620,8 @@ POSTGRES_URL=postgresql://goliath:goliath@postgres:5432/goliath
 - **No external dependencies**: Everything runs locally
 - **Realistic testing**: Production-like data for all services
 - **Exact compatibility**: Code works with real Jira in production
+- **Learning loop support**: Automatically generates outcomes so system learns from completions/reassignments
+- **Critical for MVP**: Without outcome generation, the learning loop doesn't work automatically
 
 Good luck. Build the brain.
 
