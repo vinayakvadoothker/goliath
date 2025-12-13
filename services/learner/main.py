@@ -21,6 +21,7 @@ from jira_client import (
     get_user_resolved_by_severity,
     get_user_on_call_status
 )
+from jira_utils import project_key_to_service
 
 # Setup logging
 logging.basicConfig(
@@ -148,7 +149,7 @@ async def process_outcome_endpoint(outcome: OutcomeRequest):
     """
     try:
         outcome_dict = outcome.dict()
-        result = process_outcome_service(outcome_dict)
+        result = await process_outcome_service(outcome_dict)
         
         if not result.get("processed"):
             # Already processed
@@ -236,6 +237,9 @@ async def sync_jira_endpoint(request: Optional[SyncJiraRequest] = None):
                 if not account_id or not project_key:
                     continue
                 
+                # Map project key to service name
+                service_name = project_key_to_service(project_key)
+                
                 # Get or create human
                 human = get_or_create_human(
                     human_id=account_id,
@@ -253,9 +257,9 @@ async def sync_jira_endpoint(request: Optional[SyncJiraRequest] = None):
                     except Exception:
                         pass
                 
-                # Update stats
+                # Update stats (use service name, not project key)
                 from db import get_or_create_stats, update_stats
-                stats = get_or_create_stats(account_id, project_key)
+                stats = get_or_create_stats(account_id, service_name)
                 
                 # Calculate initial fit_score based on resolve count + recency
                 resolves_count = stats.get("resolves_count", 0) + 1
@@ -263,7 +267,7 @@ async def sync_jira_endpoint(request: Optional[SyncJiraRequest] = None):
                 # Update stats
                 update_stats(
                     human_id=account_id,
-                    service=project_key,
+                    service=service_name,
                     resolves_count_delta=1,
                     last_resolved_at=resolved_at or datetime.now()
                 )

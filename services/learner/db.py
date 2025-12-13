@@ -371,7 +371,8 @@ def get_resolved_work_items(human_id: str, limit: int = 100) -> List[Dict[str, A
         SELECT 
             re.work_item_id,
             re.resolved_at,
-            wi.description
+            wi.description,
+            wi.service
         FROM resolved_edges re
         JOIN work_items wi ON wi.id = re.work_item_id
         WHERE re.human_id = %s

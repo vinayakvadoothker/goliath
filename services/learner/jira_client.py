@@ -6,6 +6,7 @@ import httpx
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
+from jira_utils import service_to_project_key
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +105,7 @@ async def get_all_closed_tickets(
 
 async def get_user_story_points(user_account_id: str) -> Dict[str, int]:
     """
-    Get current story points for a user.
+    Get current story points for a user from Jira Simulator database.
     
     Args:
         user_account_id: Jira account ID
@@ -112,23 +113,21 @@ async def get_user_story_points(user_account_id: str) -> Dict[str, int]:
     Returns:
         Dict with max_story_points and current_story_points
     """
-    jira_url = os.getenv("JIRA_SIMULATOR_URL", "http://jira-simulator:8080")
+    # Query Jira Simulator database directly (same database)
+    from db import execute_query
     
     try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # Search for user
-            response = await client.get(
-                f"{jira_url}/rest/api/3/user/search",
-                params={"query": user_account_id}
-            )
-            response.raise_for_status()
-            users = response.json()
+        query = """
+            SELECT max_story_points, current_story_points
+            FROM jira_users
+            WHERE account_id = %s
+        """
+        results = execute_query(query, [user_account_id])
             
-            if users:
-                user = users[0]
+        if results:
                 return {
-                    "max_story_points": user.get("max_story_points", 21),
-                    "current_story_points": user.get("current_story_points", 0)
+                "max_story_points": results[0].get("max_story_points", 21),
+                "current_story_points": results[0].get("current_story_points", 0)
                 }
     except Exception as e:
         logger.warning(f"Failed to get story points for user {user_account_id}: {e}")
@@ -158,8 +157,11 @@ async def get_user_resolved_by_severity(user_account_id: str, service: str, days
     
     jira_url = os.getenv("JIRA_SIMULATOR_URL", "http://jira-simulator:8080")
     
+    # Map service name to project key
+    project_key = service_to_project_key(service)
+    
     # Build JQL query
-    jql = f"assignee={user_account_id} AND project={service} AND status=Done AND resolved >= -{days}d"
+    jql = f"assignee={user_account_id} AND project={project_key} AND status=Done AND resolved >= -{days}d"
     
     try:
         async with httpx.AsyncClient(timeout=30.0) as client:

@@ -1,0 +1,44 @@
+# Multi-stage build for faster rebuilds
+# Stage 1: Base image with heavy dependencies (rarely changes)
+FROM python:3.11-slim as base
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install heavy ML dependencies first (these rarely change)
+# This layer will be cached unless we change these specific packages
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir \
+    numpy==1.24.3 \
+    scikit-learn==1.3.2
+
+# Stage 2: Install remaining dependencies (changes more frequently)
+FROM base as deps
+
+# Copy requirements
+COPY requirements.txt .
+
+# Install remaining dependencies (lighter, change more often)
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install --no-cache-dir -r requirements.txt
+
+# Stage 3: Final image with application code
+FROM deps
+
+# Copy application code (changes most frequently)
+COPY . .
+
+# Expose port
+EXPOSE 8000
+
+# Health check
+HEALTHCHECK --interval=10s --timeout=5s --retries=5 \
+    CMD curl -f http://localhost:8000/healthz || exit 1
+
+# Run application
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+

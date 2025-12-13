@@ -124,16 +124,20 @@ def update_human_embedding(
                 )
         except Exception:
             # Object doesn't exist, insert new
-            collection.data.insert(
-                uuid=object_id,
-                properties={
-                    "id": human_id,
-                    "display_name": display_name,
-                    "service": service,
-                    "capability_summary": capability_summary
-                },
-                vector=embedding
-            )
+            try:
+                collection.data.insert(
+                    uuid=object_id,
+                    properties={
+                        "id": human_id,
+                        "display_name": display_name,
+                        "service": service,
+                        "capability_summary": capability_summary
+                    },
+                    vector=embedding
+                )
+            except Exception as insert_error:
+                logger.warning(f"Failed to insert human embedding: {insert_error}")
+                return False
         
         logger.info(f"Updated human embedding for {human_id} in service {service}")
         return True

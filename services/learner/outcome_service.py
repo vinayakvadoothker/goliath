@@ -25,11 +25,12 @@ from embedding_utils import (
 )
 from weaviate_client import update_human_embedding
 from db import update_human_3d_coords
+from decision_client import get_decision_by_work_item
 
 logger = logging.getLogger(__name__)
 
 
-def process_outcome(outcome: Dict[str, Any]) -> Dict[str, Any]:
+async def process_outcome(outcome: Dict[str, Any]) -> Dict[str, Any]:
     """
     Process outcome and update stats (idempotent).
     
@@ -81,18 +82,63 @@ def process_outcome(outcome: Dict[str, Any]) -> Dict[str, Any]:
             updates.extend(_process_resolved_outcome(actor_id, service, work_item_id, timestamp))
         
         elif outcome_type == "reassigned":
-            decision_id = outcome.get("decision_id")
+            # Get original assignee from outcome or decision
+            original_assignee_id = outcome.get("original_assignee_id")
             new_assignee_id = outcome.get("new_assignee_id") or actor_id
-            updates.extend(_process_reassigned_outcome(
-                decision_id, work_item_id, actor_id, new_assignee_id, service, timestamp
-            ))
+            
+            # If original_assignee_id not in outcome, try to get from decision
+            if not original_assignee_id:
+                decision_id = outcome.get("decision_id")
+                if decision_id or work_item_id:
+                    # Try to get decision from Decision Service
+                    try:
+                        decision = await get_decision_by_work_item(work_item_id)
+                        if decision:
+                            original_assignee_id = decision.get("primary_human_id")
+                    except Exception as e:
+                        logger.warning(f"Failed to get decision for reassigned outcome: {e}")
+            
+            # If still no original_assignee_id, use actor_id as fallback (actor_id is the new assignee)
+            # This means we can't penalize the original assignee, but we can still boost the new one
+            if not original_assignee_id:
+                logger.warning(f"Could not determine original assignee for reassigned outcome {event_id}, using new assignee only")
+                # Only update new assignee, skip original assignee penalty
+                new_stats = get_or_create_stats(new_assignee_id, service)
+                old_fit_score_new = new_stats.get("fit_score", 0.5)
+                new_fit_score_new = min(1.0, old_fit_score_new + 0.05)
+                update_stats(
+                    human_id=new_assignee_id,
+                    service=service,
+                    fit_score=new_fit_score_new
+                )
+                updates.append({
+                    "human_id": new_assignee_id,
+                    "fit_score_delta": new_fit_score_new - old_fit_score_new
+                })
+            else:
+                # We have original assignee, process normally
+                updates.extend(_process_reassigned_outcome(
+                    work_item_id, original_assignee_id, new_assignee_id, service, timestamp
+                ))
         
         elif outcome_type == "escalated":
             # Escalated is similar to reassigned but with different penalty
-            decision_id = outcome.get("decision_id")
-            updates.extend(_process_escalated_outcome(
-                decision_id, work_item_id, actor_id, service, timestamp
-            ))
+            # Get original assignee same way as reassigned
+            original_assignee_id = outcome.get("original_assignee_id")
+            if not original_assignee_id:
+                try:
+                    decision = await get_decision_by_work_item(work_item_id)
+                    if decision:
+                        original_assignee_id = decision.get("primary_human_id")
+                except Exception as e:
+                    logger.warning(f"Failed to get decision for escalated outcome: {e}")
+            
+            if original_assignee_id:
+                updates.extend(_process_escalated_outcome(
+                    work_item_id, original_assignee_id, actor_id, service, timestamp
+                ))
+            else:
+                logger.warning(f"Could not determine original assignee for escalated outcome {event_id}")
         
         else:
             raise ValueError(f"Unknown outcome type: {outcome_type}")
@@ -140,8 +186,11 @@ def _process_resolved_outcome(
     # Create resolved edge in knowledge graph
     create_resolved_edge(actor_id, work_item_id, timestamp)
     
-    # Update human embedding in Weaviate
-    _update_human_embedding_from_resolution(actor_id, service, work_item_id)
+    # Update human embedding in Weaviate (non-blocking, don't fail if it errors)
+    try:
+        _update_human_embedding_from_resolution(actor_id, service, work_item_id)
+    except Exception as e:
+        logger.warning(f"Failed to update human embedding: {e}")
     
     # Update load (decrement active_items)
     load = get_or_create_load(actor_id)
@@ -157,7 +206,6 @@ def _process_resolved_outcome(
 
 
 def _process_reassigned_outcome(
-    decision_id: Optional[str],
     work_item_id: str,
     original_assignee_id: str,
     new_assignee_id: str,
@@ -208,16 +256,38 @@ def _process_reassigned_outcome(
 
 
 def _process_escalated_outcome(
-    decision_id: Optional[str],
     work_item_id: str,
+    original_assignee_id: str,
     actor_id: str,
     service: str,
     timestamp: datetime
 ) -> List[Dict[str, Any]]:
-    """Process escalated outcome - similar to reassigned but different penalty."""
-    # For now, treat escalated same as reassigned
-    # In future, could have different penalty
-    return _process_reassigned_outcome(decision_id, work_item_id, actor_id, actor_id, service, timestamp)
+    """Process escalated outcome - similar to reassigned but with larger penalty."""
+    # Escalated is worse than reassigned - larger penalty
+    updates = []
+    
+    # Original assignee: larger penalty than reassigned
+    original_stats = get_or_create_stats(original_assignee_id, service)
+    old_fit_score_original = original_stats.get("fit_score", 0.5)
+    
+    new_fit_score_original = max(0.0, old_fit_score_original - 0.2)  # Larger penalty -0.2
+    update_stats(
+        human_id=original_assignee_id,
+        service=service,
+        fit_score=new_fit_score_original,
+        transfers_count_delta=1
+    )
+    
+    updates.append({
+        "human_id": original_assignee_id,
+        "fit_score_delta": new_fit_score_original - old_fit_score_original,
+        "transfers_count_delta": 1
+    })
+    
+    # Create transferred edge (escalated is a type of transfer)
+    create_transferred_edge(work_item_id, original_assignee_id, actor_id, timestamp)
+    
+    return updates
 
 
 def _update_human_embedding_from_resolution(human_id: str, service: str, work_item_id: str) -> None:
