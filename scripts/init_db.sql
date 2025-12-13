@@ -164,3 +164,22 @@ CREATE INDEX IF NOT EXISTS idx_human_load_human_id ON human_load(human_id);
 CREATE INDEX IF NOT EXISTS idx_outcomes_dedupe_event_id ON outcomes_dedupe(event_id);
 CREATE INDEX IF NOT EXISTS idx_outcomes_dedupe_processed_at ON outcomes_dedupe(processed_at);
 
+-- Executor Service: Executed Actions Table
+CREATE TABLE IF NOT EXISTS executed_actions (
+  id TEXT PRIMARY KEY,
+  decision_id TEXT NOT NULL,
+  jira_issue_key TEXT, -- e.g., "PROJ-123"
+  jira_issue_id TEXT, -- Jira's internal ID
+  assigned_human_id TEXT NOT NULL,
+  backup_human_ids TEXT, -- JSON array
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  slack_message_id TEXT, -- If Slack notification sent
+  fallback_message TEXT -- If Jira failed, store rendered message
+);
+
+-- Indexes for executed_actions
+CREATE INDEX IF NOT EXISTS idx_executed_actions_decision_id ON executed_actions(decision_id);
+CREATE INDEX IF NOT EXISTS idx_executed_actions_jira_issue_key ON executed_actions(jira_issue_key);
+CREATE INDEX IF NOT EXISTS idx_executed_actions_assigned_human_id ON executed_actions(assigned_human_id);
+CREATE INDEX IF NOT EXISTS idx_executed_actions_created_at ON executed_actions(created_at);
+
