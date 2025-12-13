@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { cn } from '@/lib/utils';
+import { usePathname } from 'next/navigation';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -11,6 +12,12 @@ interface MainLayoutProps {
 
 export function MainLayout({ children }: MainLayoutProps) {
     const [collapsed, setCollapsed] = useState(false);
+    const pathname = usePathname();
+    const isLandingPage = pathname?.startsWith('/landing') || pathname?.startsWith('/login');
+
+    if (isLandingPage) {
+        return <>{children}</>;
+    }
 
     return (
         <div className="min-h-screen font-sans bg-background text-foreground transition-colors duration-500">
