@@ -1,144 +1,169 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import Particles, { initParticlesEngine } from "@tsparticles/react";
-import { type Container, type ISourceOptions } from "@tsparticles/engine";
-import { loadSlim } from "@tsparticles/slim";
+import { useEffect, useRef } from "react";
+
+declare global {
+    interface Window {
+        particlesJS: (id: string, config: any) => void;
+        pJSDom: Array<{ pJS: any }>;
+    }
+}
 
 export default function ParticleBackground() {
-    const [init, setInit] = useState(false);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const particlesLoaded = useRef(false);
 
     useEffect(() => {
-        initParticlesEngine(async (engine) => {
-            await loadSlim(engine);
-        }).then(() => {
-            setInit(true);
-        });
+        if (particlesLoaded.current || !containerRef.current) return;
+
+        // Load particles.js from CDN
+        const script = document.createElement("script");
+        script.src = "http://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js";
+        script.async = true;
+
+        script.onload = () => {
+            if (window.particlesJS && containerRef.current) {
+                window.particlesJS("particles-js", {
+                    "particles": {
+                        "number": {
+                            "value": 80,
+                            "density": {
+                                "enable": true,
+                                "value_area": 800
+                            }
+                        },
+                        "color": {
+                            "value": "#ffffff"
+                        },
+                        "shape": {
+                            "type": "circle",
+                            "stroke": {
+                                "width": 0,
+                                "color": "#000000"
+                            },
+                            "polygon": {
+                                "nb_sides": 5
+                            }
+                        },
+                        "opacity": {
+                            "value": 0.5,
+                            "random": false,
+                            "anim": {
+                                "enable": false,
+                                "speed": 1,
+                                "opacity_min": 0.1,
+                                "sync": false
+                            }
+                        },
+                        "size": {
+                            "value": 3,
+                            "random": true,
+                            "anim": {
+                                "enable": false,
+                                "speed": 40,
+                                "size_min": 0.1,
+                                "sync": false
+                            }
+                        },
+                        "line_linked": {
+                            "enable": true,
+                            "distance": 150,
+                            "color": "#ffffff",
+                            "opacity": 0.4,
+                            "width": 1
+                        },
+                        "move": {
+                            "enable": true,
+                            "speed": 6,
+                            "direction": "none",
+                            "random": false,
+                            "straight": false,
+                            "out_mode": "out",
+                            "bounce": false,
+                            "attract": {
+                                "enable": false,
+                                "rotateX": 600,
+                                "rotateY": 1200
+                            }
+                        }
+                    },
+                    "interactivity": {
+                        "detect_on": "canvas",
+                        "events": {
+                            "onhover": {
+                                "enable": true,
+                                "mode": "repulse"
+                            },
+                            "onclick": {
+                                "enable": true,
+                                "mode": "push"
+                            },
+                            "resize": true
+                        },
+                        "modes": {
+                            "grab": {
+                                "distance": 400,
+                                "line_linked": {
+                                    "opacity": 1
+                                }
+                            },
+                            "bubble": {
+                                "distance": 400,
+                                "size": 40,
+                                "duration": 2,
+                                "opacity": 8,
+                                "speed": 3
+                            },
+                            "repulse": {
+                                "distance": 200,
+                                "duration": 0.4
+                            },
+                            "push": {
+                                "particles_nb": 4
+                            },
+                            "remove": {
+                                "particles_nb": 2
+                            }
+                        }
+                    },
+                    "retina_detect": true
+                });
+                particlesLoaded.current = true;
+                console.log("Particles.js initialized successfully");
+                
+                // Ensure the canvas can receive mouse events
+                setTimeout(() => {
+                    const canvas = containerRef.current?.querySelector('canvas');
+                    if (canvas) {
+                        canvas.style.pointerEvents = 'auto';
+                        console.log("Canvas pointer events enabled");
+                    }
+                }, 200);
+            }
+        };
+
+        document.head.appendChild(script);
+
+        return () => {
+            // Cleanup: remove script if component unmounts
+            if (document.head.contains(script)) {
+                document.head.removeChild(script);
+            }
+        };
     }, []);
 
-    const particlesLoaded = async (container?: Container): Promise<void> => {
-        console.log(container);
-    };
-
-    const options: ISourceOptions = useMemo(
-        () => ({
-            background: {
-                color: {
-                    value: "#020202",
-                },
-            },
-            fpsLimit: 120,
-            interactivity: {
-                detectsOn: "canvas",
-                events: {
-                    onClick: {
-                        enable: true,
-                        mode: "push",
-                    },
-                    onHover: {
-                        enable: true,
-                        mode: "repulse",
-                    },
-                    resize: {
-                        enable: true,
-                        delay: 0.5
-                    },
-                },
-                modes: {
-                    grab: {
-                        distance: 400,
-                        links: {
-                            opacity: 1,
-                        },
-                    },
-                    bubble: {
-                        distance: 400,
-                        size: 40,
-                        duration: 2,
-                        opacity: 8,
-                        speed: 3,
-                    },
-                    repulse: {
-                        distance: 200,
-                        duration: 0.4,
-                    },
-                    push: {
-                        quantity: 4,
-                    },
-                    remove: {
-                        quantity: 2,
-                    },
-                },
-            },
-            particles: {
-                color: {
-                    value: "#ffffff",
-                },
-                shape: {
-                    type: "circle",
-                },
-                opacity: {
-                    value: 0.5,
-                    animation: {
-                        enable: false,
-                        speed: 1,
-                        sync: false,
-                    },
-                },
-                size: {
-                    value: 3,
-                    animation: {
-                        enable: false,
-                        speed: 40,
-                        sync: false,
-                    },
-                },
-                links: {
-                    enable: true,
-                    distance: 150,
-                    color: "#ffffff",
-                    opacity: 0.4,
-                    width: 1,
-                },
-                move: {
-                    enable: true,
-                    speed: 6,
-                    direction: "none",
-                    random: false,
-                    straight: false,
-                    outModes: {
-                        default: "out",
-                    },
-                    attract: {
-                        enable: false,
-                        rotateX: 600,
-                        rotateY: 1200,
-                    },
-                },
-                number: {
-                    density: {
-                        enable: true,
-                        width: 800,
-                        height: 800, // value_area
-                    },
-                    value: 80,
-                },
-            },
-            detectRetina: true,
-        }),
-        [],
+    return (
+        <div
+            id="particles-js"
+            ref={containerRef}
+            className="absolute inset-0 w-full h-full z-0 pointer-events-auto"
+            style={{
+                backgroundColor: "#000000",
+                backgroundImage: "url('')",
+                backgroundRepeat: "no-repeat",
+                backgroundSize: "cover",
+                backgroundPosition: "50% 50%"
+            }}
+        />
     );
-
-    if (init) {
-        return (
-            <Particles
-                id="tsparticles"
-                particlesLoaded={particlesLoaded}
-                options={options}
-                className="absolute inset-0 -z-10"
-            />
-        );
-    }
-
-    return <></>;
 }

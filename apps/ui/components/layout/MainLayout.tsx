@@ -13,7 +13,7 @@ interface MainLayoutProps {
 export function MainLayout({ children }: MainLayoutProps) {
     const [collapsed, setCollapsed] = useState(false);
     const pathname = usePathname();
-    const isLandingPage = pathname?.startsWith('/landing') || pathname?.startsWith('/login');
+    const isLandingPage = pathname === '/' || pathname?.startsWith('/landing') || pathname?.startsWith('/login');
 
     if (isLandingPage) {
         return <>{children}</>;

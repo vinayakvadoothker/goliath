@@ -1,141 +1,64 @@
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { Badge } from "@/components/ui/badge";
+"use client";
+
+import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
+import ParticleBackground from "@/components/landing/ParticleBackground";
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Activity, Server, Brain } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
-export default function DashboardPage() {
-  return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Mission control for work assignments.</p>
+export default function LandingPage() {
+
+    return (
+        <div className="relative min-h-screen w-full overflow-hidden selection:bg-white/20">
+            {/* Background Particles */}
+            <ParticleBackground />
+
+            {/* Hero Section */}
+            <main className="relative z-20 flex min-h-screen flex-col items-center justify-center px-4 text-center pointer-events-none">
+
+                {/* Animated Reveal Text */}
+                <motion.h1
+                    initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    transition={{ duration: 0.8, ease: "easeOut" }}
+                    className="max-w-4xl text-7xl font-bold tracking-tighter md:text-9xl lg:text-[12rem] bg-clip-text text-transparent bg-gradient-to-b from-white to-white/60 pointer-events-none"
+                >
+                    Centra
+                </motion.h1>
+
+                <motion.p
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3, duration: 0.8 }}
+                    className="mt-6 max-w-2xl text-lg text-gray-400 md:text-2xl font-mono pointer-events-none"
+                >
+                    The Operating System for Intelligence.
+                </motion.p>
+
+                {/* Breathing Button */}
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.6, duration: 0.5 }}
+                    className="mt-12 pointer-events-auto"
+                >
+                    <Link href="/dashboard">
+                        <button className="group relative px-8 py-4 bg-transparent overflow-hidden rounded-full transition-all hover:scale-105">
+                            <div className="absolute inset-0 border border-white/20 rounded-full group-hover:border-white/50 transition-colors"></div>
+                            <div className="absolute inset-0 bg-white/5 opacity-0 group-hover:opacity-100 transition-opacity rounded-full blurred-bg"></div>
+
+                            {/* Breathing Glow */}
+                            <div className="absolute inset-0 rounded-full animate-pulse-slow border border-white/10 filter blur-[1px]"></div>
+
+                            <span className="relative flex items-center gap-2 font-medium tracking-wide text-lg">
+                                START SEQUENCE
+                                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                            </span>
+                        </button>
+                    </Link>
+                </motion.div>
+
+            </main>
         </div>
-        <Link href="/work-items/new">
-          <Button>Create Work Item</Button>
-        </Link>
-      </div>
-
-      {/* Stats Grid */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          label="Total Work Items"
-          value="1,234"
-          trend="up"
-          trendValue="+12%"
-        />
-        <StatCard
-          label="Active Items"
-          value="42"
-        />
-        <StatCard
-          label="Resolved (7d)"
-          value="156"
-          trend="up"
-          trendValue="+5%"
-        />
-        <StatCard
-          label="Avg Resolution"
-          value="4.2h"
-          unit="hours"
-          trend="down"
-          trendValue="-0.5h"
-        />
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-        {/* Recent Decisions */}
-        <Card className="col-span-4">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <CardTitle>Recent Decisions</CardTitle>
-            <Link href="/work-items">
-              <Button variant="ghost" size="sm" className="text-primary hover:text-primary/80">
-                View All <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-            </Link>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Link href={`/work-items/${1200 + i}`} key={i} className="block">
-                  <div className="flex items-center justify-between p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group">
-                    <div className="flex items-center gap-4">
-                      <div className="h-9 w-9 bg-primary/20 text-primary rounded-full grid place-items-center font-bold text-xs group-hover:bg-primary/30 transition-colors">
-                        WI
-                      </div>
-                      <div>
-                        <div className="font-medium group-hover:text-primary transition-colors">API Latency Spike #{1200 + i}</div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-2">
-                          <span>api-service</span>
-                          <span>•</span>
-                          <span>2 mins ago</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="decision" className="bg-purple-500/20 text-purple-400 border-purple-500/20">
-                        Auto-Assigned
-                      </Badge>
-                      <div className="flex -space-x-2">
-                        <div className="h-8 w-8 rounded-full border-2 border-background bg-muted grid place-items-center text-xs">JD</div>
-                      </div>
-                    </div>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* System Status */}
-        <Card className="col-span-3">
-          <CardHeader>
-            <CardTitle>System Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {[
-                { name: "Decision Service", status: "Healthy", icon: Brain, color: "text-purple-500" },
-                { name: "Learner Service", status: "Training", icon: Activity, color: "text-blue-500" },
-                { name: "Executor Service", status: "Healthy", icon: Server, color: "text-green-500" },
-              ].map((service) => (
-                <div key={service.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={`p-2 rounded-md bg-secondary ${service.color}`}>
-                      <service.icon className="h-5 w-5" />
-                    </div>
-                    <span className="font-medium">{service.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${service.status === 'Healthy' ? 'bg-green-500' : 'bg-blue-500 animate-pulse'}`}></div>
-                    <span className="text-sm text-muted-foreground">{service.status}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-8 p-4 rounded-lg bg-secondary/50 border border-border">
-              <h4 className="text-sm font-semibold mb-2">Wait Times</h4>
-              <div className="flex justify-between items-end">
-                <div className="text-center">
-                  <div className="text-2xl font-bold">12ms</div>
-                  <div className="text-xs text-muted-foreground">P99 Inference</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">45ms</div>
-                  <div className="text-xs text-muted-foreground">DB Latency</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-2xl font-bold">1.2s</div>
-                  <div className="text-xs text-muted-foreground">E2E Routing</div>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    </div>
-  )
+    );
 }

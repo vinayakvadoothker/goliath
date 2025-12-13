@@ -643,7 +643,6 @@ def get_db_connection():
     """Get database connection from environment."""
     import psycopg2
     from urllib.parse import urlparse
-import uuid
     
     # Detect if running from host machine or inside Docker
     postgres_url = os.getenv("POSTGRES_URL")
@@ -712,7 +711,7 @@ def create_human_in_db(conn, account_id: str, display_name: str, email: str, jir
         print(f"  ⚠️  Failed to create human {display_name}: {e}")
         return None
 
-async deitem_via_ingest(
+async def create_work_item_via_ingest(
     jira_issue_key: str,
     service: str,
     severity: str,
@@ -980,15 +979,15 @@ async def seed_jira_data():
                     projects.append({"key": project_key, "name": service})
         else:
             # Local database mode
-        for service in SERVICES:
-            project_key = service.upper().replace("-", "")[:10]
-            cur.execute("""
-                INSERT INTO jira_projects (key, name, project_type_key)
-                VALUES (%s, %s, 'software')
-                ON CONFLICT (key) DO NOTHING
-            """, (project_key, service))
-            projects.append({"key": project_key, "name": service})
-        conn.commit()
+            for service in SERVICES:
+                project_key = service.upper().replace("-", "")[:10]
+                cur.execute("""
+                    INSERT INTO jira_projects (key, name, project_type_key)
+                    VALUES (%s, %s, 'software')
+                    ON CONFLICT (key) DO NOTHING
+                """, (project_key, service))
+                projects.append({"key": project_key, "name": service})
+            conn.commit()
         
         print(f"  ✅ Using {len(projects)} projects")
         
@@ -1018,7 +1017,7 @@ async def seed_jira_data():
             
             # Store in local database (for simulator or tracking)
             if not USE_REAL_JIRA:
-            cur.execute("""
+                cur.execute("""
                 INSERT INTO jira_users (account_id, display_name, email_address, active, max_story_points, current_story_points, role)
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
                     ON CONFLICT (account_id) DO UPDATE SET
@@ -1054,7 +1053,7 @@ async def seed_jira_data():
             })
         
         if not USE_REAL_JIRA:
-        conn.commit()
+            conn.commit()
         print(f"  ✅ Processed {len(users)} specialized users")
         print(f"  ✅ Created {len(users)} humans in main database")
         print("")
@@ -1078,12 +1077,12 @@ async def seed_jira_data():
             
             for _ in range(user_closed_count):
                 # Create ticket matching user's specialization
-            created_at = fake.date_time_between(start_date=start_date, end_date='now')
-            resolved_at = created_at + timedelta(
-                days=random.randint(0, 7),
-                hours=random.randint(0, 23)
-            )
-            
+                created_at = fake.date_time_between(start_date=start_date, end_date='now')
+                resolved_at = created_at + timedelta(
+                    days=random.randint(0, 7),
+                    hours=random.randint(0, 23)
+                )
+                
                 issue_type = random.choice(user["issue_types"])
                 priority = random.choice(user["severity_focus"]).replace("sev", "").capitalize()  # sev1 -> Critical
                 if priority == "Sev1":
@@ -1093,7 +1092,7 @@ async def seed_jira_data():
                 elif priority == "Sev3":
                     priority = "Medium"
                 
-            story_points = random.choice([1, 2, 3, 5, 8, 13]) if issue_type != "Bug" else None
+                story_points = random.choice([1, 2, 3, 5, 8, 13]) if issue_type != "Bug" else None
                 summary = random.choice(user_issues)
                 description = f"Description for {summary}. Related to {', '.join(user['expertise_areas'][:2])}."
                 
@@ -1148,11 +1147,11 @@ async def seed_jira_data():
                     await asyncio.sleep(0.5)  # 500ms delay between issues
                 else:
                     # Local database mode
-            issue_id = fake.uuid4()
+                    issue_id = fake.uuid4()
                     issue_key = f"{user_project['key']}-{random.randint(100, 9999)}"
                     reporter = random.choice(users)  # Any user can report
-            
-            cur.execute("""
+                    
+                    cur.execute("""
                 INSERT INTO jira_issues (
                     id, key, project_key, summary, description, issuetype_name, priority_name,
                     status_name, assignee_account_id, reporter_account_id, story_points,
@@ -1160,24 +1159,24 @@ async def seed_jira_data():
                 )
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (key) DO NOTHING
-            """, (
-                issue_id,
-                issue_key,
+                    """, (
+                        issue_id,
+                        issue_key,
                         user_project['key'],
                         summary,
                         description,
-                issue_type,
-                priority,
-                "Done",
+                        issue_type,
+                        priority,
+                        "Done",
                         user['account_id'],  # Assigned to this specialized user
-                reporter['account_id'],
-                story_points,
-                created_at,
-                resolved_at,
-                resolved_at
-            ))
-            
-            if cur.rowcount > 0:
+                        reporter['account_id'],
+                        story_points,
+                        created_at,
+                        resolved_at,
+                        resolved_at
+                    ))
+                    
+                    if cur.rowcount > 0:
                         # Create WorkItem via Ingest Service (maintains single source of truth)
                         # Map priority to severity
                         priority_to_severity = {
@@ -1204,10 +1203,10 @@ async def seed_jira_data():
                             resolved_at=resolved_at
                         )
                         
-                closed_count += 1
+                    closed_count += 1
         
         if not USE_REAL_JIRA:
-        conn.commit()
+            conn.commit()
         print(f"  ✅ Created {closed_count} closed tickets (specialized per user)")
         
         # Create some open tickets (current capacity) - distributed across users
@@ -1279,37 +1278,37 @@ async def seed_jira_data():
                 await asyncio.sleep(0.5)  # 500ms delay between issues
             else:
                 # Local database mode
-            issue_id = fake.uuid4()
-            issue_key = f"{project['key']}-{random.randint(100, 9999)}"
-            reporter = random.choice(users)
+                issue_id = fake.uuid4()
+                issue_key = f"{project['key']}-{random.randint(100, 9999)}"
+                reporter = random.choice(users)
                 status = random.choice(["To Do", "In Progress"])
-            
-            cur.execute("""
-                INSERT INTO jira_issues (
-                    id, key, project_key, summary, description, issuetype_name, priority_name,
-                    status_name, assignee_account_id, reporter_account_id, story_points,
-                    created_at, updated_at, resolved_at
-                )
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-                ON CONFLICT (key) DO NOTHING
-            """, (
-                issue_id,
-                issue_key,
-                project['key'],
+                
+                cur.execute("""
+                    INSERT INTO jira_issues (
+                        id, key, project_key, summary, description, issuetype_name, priority_name,
+                        status_name, assignee_account_id, reporter_account_id, story_points,
+                        created_at, updated_at, resolved_at
+                    )
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (key) DO NOTHING
+                """, (
+                    issue_id,
+                    issue_key,
+                    project['key'],
                     summary,
                     description,
-                issue_type,
-                priority,
-                status,
-                assignee['account_id'],
-                reporter['account_id'],
-                story_points,
-                created_at,
-                created_at,
-                None
-            ))
-            
-            if cur.rowcount > 0:
+                    issue_type,
+                    priority,
+                    status,
+                    assignee['account_id'],
+                    reporter['account_id'],
+                    story_points,
+                    created_at,
+                    created_at,
+                    None
+                ))
+                
+                if cur.rowcount > 0:
                     # Create WorkItem via Ingest Service (open tickets)
                     priority_to_severity = {
                         "Critical": "sev1",
@@ -1341,7 +1340,7 @@ async def seed_jira_data():
                     assignee['current_story_points'] += story_points
         
         if not USE_REAL_JIRA:
-        conn.commit()
+            conn.commit()
         print(f"  ✅ Created {open_count} open tickets")
         
         # Summary
@@ -1366,42 +1365,42 @@ async def seed_jira_data():
         
         # Update user current_story_points (local database only)
         if not USE_REAL_JIRA:
-        print("  Updating user capacity...")
-        for user in users:
-            cur.execute("""
-                UPDATE jira_users
-                SET current_story_points = (
-                    SELECT COALESCE(SUM(story_points), 0)
-                    FROM jira_issues
-                    WHERE assignee_account_id = %s
-                    AND status_name IN ('To Do', 'In Progress')
-                )
-                WHERE account_id = %s
-            """, (user['account_id'], user['account_id']))
-        
-        conn.commit()
-        print("  ✅ Updated user capacity")
+            print("  Updating user capacity...")
+            for user in users:
+                cur.execute("""
+                    UPDATE jira_users
+                    SET current_story_points = (
+                        SELECT COALESCE(SUM(story_points), 0)
+                        FROM jira_issues
+                        WHERE assignee_account_id = %s
+                        AND status_name IN ('To Do', 'In Progress')
+                    )
+                    WHERE account_id = %s
+                """, (user['account_id'], user['account_id']))
+            
+            conn.commit()
+            print("  ✅ Updated user capacity")
         
         print("")
         if USE_REAL_JIRA:
             print("✅ Real Jira seeded successfully!")
         else:
-        print("✅ Jira Simulator seeded successfully!")
-        print(f"   - {len(projects)} projects")
-        print(f"   - {len(users)} specialized users")
-        print(f"   - {closed_count} closed tickets (specialized per user)")
-        print(f"   - {open_count} open tickets")
-        print("")
-        print("📊 User Specializations Summary:")
-        for user in users:
-            cur.execute("""
-                SELECT COUNT(*) as resolved_count
-                FROM jira_issues
-                WHERE assignee_account_id = %s
-                AND status_name = 'Done'
-            """, (user['account_id'],))
-            resolved = cur.fetchone()[0]
-            print(f"   - {user['display_name']}: {resolved} resolved tickets in {user['primary_service']}")
+            print("✅ Jira Simulator seeded successfully!")
+            print(f"   - {len(projects)} projects")
+            print(f"   - {len(users)} specialized users")
+            print(f"   - {closed_count} closed tickets (specialized per user)")
+            print(f"   - {open_count} open tickets")
+            print("")
+            print("📊 User Specializations Summary:")
+            for user in users:
+                cur.execute("""
+                    SELECT COUNT(*) as resolved_count
+                    FROM jira_issues
+                    WHERE assignee_account_id = %s
+                    AND status_name = 'Done'
+                """, (user['account_id'],))
+                resolved = cur.fetchone()[0]
+                print(f"   - {user['display_name']}: {resolved} resolved tickets in {user['primary_service']}")
         
     except Exception as e:
         print(f"❌ Error seeding data: {e}")

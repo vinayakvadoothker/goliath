@@ -775,12 +775,12 @@ def test_llm_preprocessing():
 ## Complete Checklist
 
 ### Service Scaffolding (Hour 2-3)
-- [ ] Scaffold `/services/ingest/` (FastAPI + PostgreSQL)
+- [x] Scaffold `/services/ingest/` (FastAPI + PostgreSQL)
 - [x] Scaffold `/services/monitoring/` (FastAPI, background task)
 - [x] Add `/healthz` endpoints to both
-- [ ] Add request logging middleware
-- [ ] Add correlation ID middleware
-- [ ] Setup PostgreSQL connection (Ingest)
+- [ ] Add request logging middleware (Nice to have, not critical)
+- [ ] Add correlation ID middleware (Nice to have, not critical)
+- [x] Setup PostgreSQL connection (Ingest)
 - [x] Setup LLM client (Monitoring)
 
 ### Monitoring Service (Hour 4-5)
@@ -796,19 +796,19 @@ def test_llm_preprocessing():
 - [x] Test error detection
 
 ### Ingest Service (Hour 5-6)
-- [x] Implement `POST /ingest/demo` endpoint
-- [ ] Implement `POST /webhooks/jira` endpoint
-- [ ] Implement `POST /work-items` endpoint
-- [ ] Implement `GET /work-items` endpoint
-- [ ] Implement `GET /work-items/:id` endpoint
-- [ ] Implement `POST /work-items/:id/outcome` endpoint
-- [ ] Implement LLM preprocessing
-- [ ] Implement embedding generation
-- [ ] Implement Weaviate storage
-- [ ] Implement PostgreSQL storage
-- [ ] Implement outcome forwarding to Learner
-- [ ] Create database schema
-- [ ] Write tests
+- [x] Implement `POST /ingest/demo` endpoint (with LLM preprocessing, embeddings, Weaviate, PostgreSQL, auto-triggers Decision)
+- [ ] Implement `POST /webhooks/jira` endpoint (Optional - PagerDuty webhook implemented instead)
+- [x] Implement `POST /work-items` endpoint
+- [x] Implement `GET /work-items` endpoint (with filtering by service/severity)
+- [x] Implement `GET /work-items/:id` endpoint
+- [x] Implement `POST /work-items/:id/outcome` endpoint (forwards to Learner)
+- [x] Implement LLM preprocessing
+- [x] Implement embedding generation
+- [x] Implement Weaviate storage
+- [x] Implement PostgreSQL storage
+- [x] Implement outcome forwarding to Learner
+- [x] Create database schema
+- [ ] Write tests (Test script exists but test files need to be created)
 
 ### Monitoring Service Completion (Hour 16-18)
 - [x] Implement multiple error types
@@ -818,13 +818,13 @@ def test_llm_preprocessing():
 - [x] Test integration with Ingest
 
 ### Documentation
-- [ ] Create `/services/ingest/README.md`
-- [ ] Create `/services/monitoring/README.md`
-- [ ] Create `/scripts/test_standalone.sh` for Ingest
-- [ ] Create `/scripts/test_standalone.sh` for Monitoring
-- [ ] Create mock data files
-- [ ] Document all API endpoints
-- [ ] Document monitoring loop behavior
+- [x] Create `/services/ingest/README.md`
+- [x] Create `/services/monitoring/README.md`
+- [x] Create `/scripts/test_standalone.sh` for Ingest
+- [x] Create `/scripts/test_standalone.sh` for Monitoring
+- [ ] Create mock data files (Nice to have)
+- [x] Document all API endpoints (README includes endpoint documentation)
+- [x] Document monitoring loop behavior (README includes monitoring behavior)
 
 ---
 
