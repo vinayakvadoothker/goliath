@@ -77,13 +77,13 @@ async def make_decision(work_item_id: str) -> Dict[str, Any]:
         except Exception as e:
             logger.warning(f"Vector similarity search failed: {e}, continuing without similarity data")
     
-    # 4. Get candidates from Learner Service
-    candidates = await get_candidates(service)
+    # 4. Get candidates from Learner Service (with fallback)
+    candidates = await get_candidates(service, use_fallback=True)
     if not candidates:
-        logger.error(f"No candidates found for service {service}")
-        raise ValueError(f"No candidates found for service {service}. Learner Service may be down or service has no profiles.")
+        logger.error(f"No candidates found for service {service} (even with fallback)")
+        raise ValueError(f"No candidates found for service {service}. Learner Service may be down and no fallback candidates available.")
     
-    logger.info(f"Retrieved {len(candidates)} candidates from Learner Service")
+    logger.info(f"Retrieved {len(candidates)} candidates from Learner Service (or fallback)")
     
     # 5. Apply constraints
     passed_candidates, filtered_candidates = apply_constraints(candidates, work_item)

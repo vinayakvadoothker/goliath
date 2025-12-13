@@ -5,17 +5,22 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import os
-from datetime import datetime
+import asyncio
+from datetime import datetime, timedelta
 import logging
 
 from jql_parser import parse_jql
 from db import execute_query, execute_update, get_next_issue_key
+from outcome_generator import OutcomeGenerator
 
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Jira Simulator", version="0.1.0")
+
+# Global outcome generator
+outcome_generator: Optional[OutcomeGenerator] = None
 
 
 class Issue(BaseModel):
@@ -468,6 +473,107 @@ async def list_projects():
     except Exception as e:
         logger.error(f"List projects failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"List projects failed: {str(e)}")
+
+
+@app.get("/rest/api/3/outcomes/pending")
+async def get_pending_outcomes(
+    since: Optional[str] = Query(None, description="ISO 8601 timestamp"),
+    limit: int = Query(50, ge=1, le=100)
+):
+    """
+    Get pending outcomes for Ingest service to process.
+    Polling endpoint - Ingest can call this to check for new outcomes.
+    """
+    try:
+        since_timestamp = None
+        if since:
+            since_timestamp = datetime.fromisoformat(since.replace('Z', '+00:00'))
+        else:
+            # Default: last 5 minutes
+            since_timestamp = datetime.now() - timedelta(minutes=5)
+        
+        query = """
+            SELECT 
+                event_id,
+                issue_key,
+                type,
+                actor_id,
+                service,
+                timestamp,
+                original_assignee_id,
+                new_assignee_id,
+                work_item_id
+            FROM jira_outcomes
+            WHERE timestamp >= %s
+            AND processed = FALSE
+            ORDER BY timestamp ASC
+            LIMIT %s
+        """
+        
+        results = execute_query(query, [since_timestamp, limit])
+        
+        outcomes = []
+        for row in results:
+            outcome = {
+                "event_id": row['event_id'],
+                "issue_key": row['issue_key'],
+                "type": row['type'],
+                "actor_id": row['actor_id'],
+                "service": row['service'],
+                "timestamp": row['timestamp'].isoformat() if hasattr(row['timestamp'], 'isoformat') else str(row['timestamp']),
+            }
+            
+            if row.get('original_assignee_id'):
+                outcome['original_assignee_id'] = row['original_assignee_id']
+            if row.get('new_assignee_id'):
+                outcome['new_assignee_id'] = row['new_assignee_id']
+            if row.get('work_item_id'):
+                outcome['work_item_id'] = row['work_item_id']
+            
+            outcomes.append(outcome)
+        
+        # Next poll should be 30 seconds from now
+        next_poll_after = (datetime.now() + timedelta(seconds=30)).isoformat()
+        
+        return {
+            "outcomes": outcomes,
+            "next_poll_after": next_poll_after
+        }
+    
+    except Exception as e:
+        logger.error(f"Get pending outcomes failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to get outcomes: {str(e)}")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Start outcome generator on service startup."""
+    global outcome_generator
+    
+    ingest_url = os.getenv("INGEST_SERVICE_URL", "http://ingest:8000")
+    poll_interval = int(os.getenv("JIRA_OUTCOME_POLL_INTERVAL", "30"))
+    enabled = os.getenv("JIRA_OUTCOME_GENERATION_ENABLED", "true").lower() == "true"
+    
+    if enabled:
+        outcome_generator = OutcomeGenerator(
+            ingest_url=ingest_url,
+            poll_interval=poll_interval
+        )
+        
+        # Start background task
+        asyncio.create_task(outcome_generator.start())
+        logger.info("Outcome generator started")
+    else:
+        logger.info("Outcome generator disabled")
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop outcome generator on service shutdown."""
+    global outcome_generator
+    if outcome_generator:
+        await outcome_generator.stop()
+        logger.info("Outcome generator stopped")
 
 
 if __name__ == "__main__":

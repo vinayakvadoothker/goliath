@@ -44,60 +44,74 @@ class JQLParser:
         Example:
             jql = "project=API AND status=Done AND resolved >= -90d"
             returns: (
-                "project_key = $1 AND status_name = $2 AND resolved_at >= $3",
+                "project_key = %s AND status_name = %s AND resolved_at >= %s",
                 ["API", "Done", datetime(...)]
+            )
+            
+            jql = "status=Done OR status=Closed"
+            returns: (
+                "status_name = %s OR status_name = %s",
+                ["Done", "Closed"]
             )
         """
         if not jql or not jql.strip():
             return "1=1", []  # No filter
         
         self.param_counter = 0
-        conditions = []
-        params = []
-        
-        # Normalize: remove extra spaces, handle case
         jql = jql.strip()
         
-        # Split by AND/OR (simple approach - handles basic cases)
-        # This is a simplified parser - for production, use a proper parser library
-        parts = self._split_by_operators(jql)
+        # Split by AND/OR operators, preserving operator order
+        condition_strings, operators = self._split_by_operators(jql)
         
-        for part in parts:
-            part = part.strip()
-            if not part:
-                continue
-            
-            condition, part_params = self._parse_condition(part)
-            if condition:
-                conditions.append(condition)
-                params.extend(part_params)
-        
-        if not conditions:
+        if not condition_strings:
             return "1=1", []
         
-        # Reconstruct with AND/OR operators
-        sql = self._reconstruct_sql(conditions, jql)
+        # Parse each condition
+        sql_conditions = []
+        params = []
+        
+        for condition_str in condition_strings:
+            condition_str = condition_str.strip()
+            if not condition_str:
+                continue
+            
+            sql_condition, condition_params = self._parse_condition(condition_str)
+            if sql_condition:
+                sql_conditions.append(sql_condition)
+                params.extend(condition_params)
+        
+        if not sql_conditions:
+            return "1=1", []
+        
+        # Reconstruct SQL with proper AND/OR operators
+        sql = self._reconstruct_sql(sql_conditions, operators)
         
         return sql, params
     
-    def _split_by_operators(self, jql: str) -> List[str]:
-        """Split JQL by AND/OR operators."""
-        # Simple approach: split on AND/OR (case insensitive)
-        # Use regex to split while preserving the operators
-        # Pattern: split on " AND " or " OR " (with spaces)
+    def _split_by_operators(self, jql: str) -> Tuple[List[str], List[str]]:
+        """
+        Split JQL by AND/OR operators, preserving operator order.
+        
+        Returns:
+            (conditions_list, operators_list)
+            e.g., ("project=API AND status=Done OR status=Closed") 
+            -> (["project=API", "status=Done", "status=Closed"], ["AND", "OR"])
+        """
         import re
+        # Split on " AND " or " OR " (with spaces), case insensitive
         parts = re.split(r'\s+(AND|OR)\s+', jql, flags=re.IGNORECASE)
         
-        # parts will be: [condition1, 'AND', condition2, 'OR', condition3, ...]
-        # For now, we'll just extract the conditions and use AND for all
-        # (A full implementation would track operators)
         conditions = []
+        operators = []
+        
         for i, part in enumerate(parts):
             if i % 2 == 0:  # Even indices are conditions
                 if part.strip():
                     conditions.append(part.strip())
+            else:  # Odd indices are operators
+                operators.append(part.upper())  # Normalize to uppercase
         
-        return conditions
+        return conditions, operators
     
     def _parse_condition(self, condition: str) -> Tuple[Optional[str], List]:
         """
@@ -162,13 +176,33 @@ class JQLParser:
         
         return f"{db_field} {sql_op} %s", [value]
     
-    def _reconstruct_sql(self, conditions: List[str], original_jql: str) -> str:
-        """Reconstruct SQL with AND/OR operators based on original JQL."""
-        # For now, use AND for all conditions (simplified)
-        # In a full implementation, we'd track operator positions from original JQL
+    def _reconstruct_sql(self, conditions: List[str], operators: List[str]) -> str:
+        """
+        Reconstruct SQL with AND/OR operators.
+        
+        Args:
+            conditions: List of SQL conditions (e.g., ["field1 = %s", "field2 = %s"])
+            operators: List of operators (e.g., ["AND", "OR"])
+        
+        Returns:
+            SQL WHERE clause with proper operators
+        """
         if not conditions:
             return "1=1"
-        return " AND ".join(conditions)
+        
+        if len(conditions) == 1:
+            return conditions[0]
+        
+        # Reconstruct: condition1 operator1 condition2 operator2 condition3 ...
+        # If we have N conditions, we have N-1 operators
+        result = conditions[0]
+        
+        for i in range(1, len(conditions)):
+            # Use operator[i-1] between condition[i-1] and condition[i]
+            operator = operators[i-1] if i-1 < len(operators) else "AND"
+            result += f" {operator} {conditions[i]}"
+        
+        return result
 
 
 def parse_jql(jql: str) -> Tuple[str, List]:
