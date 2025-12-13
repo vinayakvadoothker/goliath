@@ -16,39 +16,59 @@ module.exports = {
       },
     },
     extend: {
+      fontFamily: {
+        sans: ["var(--font-sans)", "sans-serif"],
+        mono: ["var(--font-mono)", "monospace"],
+      },
+      borderColor: {
+        DEFAULT: "#262626",
+      },
       colors: {
-        border: "#1a1a1a",
-        input: "#1a1a1a",
-        ring: "#1a1a1a",
-        background: "#0a0a0a",
-        foreground: "#f5f5f5",
+        border: "#262626", // Dark grey border for high contrast against #020202
+        input: "#262626",
+        ring: "#ffffff", // White ring
+        background: "var(--background)",
+        foreground: "var(--foreground)",
         primary: {
-          DEFAULT: "#3b82f6",
-          foreground: "#f5f5f5",
+          DEFAULT: "#ffffff", // White Primary
+          foreground: "#000000", // Black Text
         },
         secondary: {
-          DEFAULT: "#141414",
-          foreground: "#f5f5f5",
+          DEFAULT: "#262626", // Dark Grey
+          foreground: "#ffffff",
         },
         destructive: {
           DEFAULT: "#ef4444",
-          foreground: "#f5f5f5",
+          foreground: "#ffffff",
         },
         muted: {
-          DEFAULT: "#141414",
-          foreground: "#a0a0a0",
+          DEFAULT: "#262626",
+          foreground: "#a3a3a3",
         },
         accent: {
-          DEFAULT: "#3b82f6",
-          foreground: "#f5f5f5",
+          DEFAULT: "#262626",
+          foreground: "#ffffff",
         },
         popover: {
-          DEFAULT: "#141414",
-          foreground: "#f5f5f5",
+          DEFAULT: "#020202", // Same as bg
+          foreground: "#d9d9d9",
         },
         card: {
-          DEFAULT: "#141414",
-          foreground: "#f5f5f5",
+          DEFAULT: "#020202", // Same as bg
+          foreground: "#d9d9d9",
+        },
+        // Goliath Custom Colors
+        success: {
+          DEFAULT: "#ffffff",
+          foreground: "#000000",
+        },
+        decision: {
+          DEFAULT: "#ffffff",
+          foreground: "#000000",
+        },
+        outcome: {
+          DEFAULT: "#737373", // Neutral grey
+          foreground: "#ffffff",
         },
       },
       borderRadius: {
