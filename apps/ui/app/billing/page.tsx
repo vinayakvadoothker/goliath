@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,7 +57,7 @@ const plans = [
   },
 ];
 
-export default function BillingPage() {
+function BillingPageContent() {
   const [billingCycle, setBillingCycle] = useState<"monthly" | "yearly">("monthly");
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -176,5 +176,13 @@ export default function BillingPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+export default function BillingPage() {
+  return (
+    <Suspense fallback={<div className="space-y-8 animate-in fade-in duration-500">Loading...</div>}>
+      <BillingPageContent />
+    </Suspense>
   );
 }

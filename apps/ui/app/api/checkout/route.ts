@@ -1,13 +1,16 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-11-20.acacia',
-});
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, {
+      apiVersion: '2025-11-17.clover' as any,
+    })
+  : null;
 
 let proPriceId: string | null = null;
 
 async function getOrCreateProPrice(): Promise<string> {
+  if (!stripe) throw new Error('Stripe is not configured');
   if (proPriceId) return proPriceId;
 
   const products = await stripe.products.list({ limit: 100 });
@@ -37,6 +40,13 @@ async function getOrCreateProPrice(): Promise<string> {
 }
 
 export async function POST(req: Request) {
+  if (!stripe) {
+    return NextResponse.json(
+      { error: 'Stripe is not configured' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { plan, billingCycle } = await req.json();
     const priceId = await getOrCreateProPrice();

@@ -74,7 +74,7 @@ export default function LandingPage() {
                     transition={{ delay: 0.3, duration: 0.8 }}
                     className="mt-6 max-w-2xl text-xl text-gray-300 md:text-2xl font-light pointer-events-none"
                 >
-                    The command center for your AI agents.
+                    Intelligent incident routing that learns from your team and gets smarter everytime
                 </motion.p>
 
                 <motion.div

@@ -113,37 +113,46 @@ async def create_demo_work_item(request: DemoWorkItemRequest):
         embedding_3d = pca_reduce(embedding)
         
         # Store in PostgreSQL
-        execute_update("""
-            INSERT INTO work_items (
-                id, type, service, severity, description, raw_log,
-                embedding_3d_x, embedding_3d_y, embedding_3d_z,
-                created_at, origin_system, story_points, impact
-            )
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, [
-            work_item_id,
-            request.type or "incident",
-            request.service,
-            request.severity,
-            cleaned_description,
-            request.raw_log,
-            embedding_3d[0],
-            embedding_3d[1],
-            embedding_3d[2],
-            created_at,
-            "demo",  # origin_system
-            request.story_points,
-            request.impact
-        ])
+        try:
+            rows_affected = execute_update("""
+                INSERT INTO work_items (
+                    id, type, service, severity, description, raw_log,
+                    embedding_3d_x, embedding_3d_y, embedding_3d_z,
+                    created_at, origin_system, story_points, impact
+                )
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            """, [
+                work_item_id,
+                request.type or "incident",
+                request.service,
+                request.severity,
+                cleaned_description,
+                request.raw_log,
+                embedding_3d[0],
+                embedding_3d[1],
+                embedding_3d[2],
+                created_at,
+                "demo",  # origin_system
+                request.story_points,
+                request.impact
+            ])
+            logger.info(f"Stored WorkItem {work_item_id} in database ({rows_affected} rows affected)")
+        except Exception as e:
+            logger.error(f"Failed to store WorkItem in database: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Failed to store WorkItem in database: {str(e)}")
         
         # Store in Weaviate (for vector similarity search)
-        store_work_item(
-            work_item_id=work_item_id,
-            description=cleaned_description,
-            service=request.service,
-            severity=request.severity,
-            embedding=embedding
-        )
+        try:
+            store_work_item(
+                work_item_id=work_item_id,
+                description=cleaned_description,
+                service=request.service,
+                severity=request.severity,
+                embedding=embedding
+            )
+            logger.info(f"Stored WorkItem {work_item_id} in Weaviate")
+        except Exception as e:
+            logger.warning(f"Failed to store WorkItem in Weaviate: {e}. Continuing...")
         
         logger.info(f"Created WorkItem {work_item_id} for service {request.service}")
         
