@@ -17,7 +17,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         pathname?.startsWith('/landing') || 
         pathname?.startsWith('/login') ||
         pathname?.startsWith('/sign-in') ||
-        pathname?.startsWith('/sign-up');
+        pathname?.startsWith('/sign-up') ||
+        pathname?.startsWith('/signin');
 
     // Sync user to Postgres on first authenticated page load
     useUserSync();
