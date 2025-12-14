@@ -3,37 +3,53 @@
 import { motion } from "framer-motion";
 import ParticleBackground from "@/components/landing/ParticleBackground";
 import Link from "next/link";
-import { ArrowRight, Brain, TrendingUp, Shield, Zap, CheckCircle2 } from "lucide-react";
+import { ArrowRight, Brain, TrendingUp, Shield, Zap, CheckCircle2, BarChart3, Clock, Users, FileSearch, Layers } from "lucide-react";
 
 export default function LandingPage() {
     const features = [
         {
+            icon: Zap,
+            title: "Ingest & Contextualize",
+            description: "Centra connects to your observability and ticketing stacks (DataDog, PagerDuty, Jira) to build a real-time graph of your engineering ecosystem."
+        },
+        {
             icon: Brain,
-            title: "AI-Powered Routing",
-            description: "Intelligently routes incidents to the right person using context-aware decision making. Understands incident details, service relationships, and team expertise."
+            title: "Decision Engine",
+            description: "Our LLM-based engine analyzes incident logs, service dependencies, and on-call schedules to determine the best possible owner."
+        },
+        {
+            icon: CheckCircle2,
+            title: "Automated Routing",
+            description: "Work is automatically assigned with a confidence score and a natural language explanation of why this person was chosen."
         },
         {
             icon: TrendingUp,
-            title: "Learns from Outcomes",
-            description: "Gets smarter with every assignment. When someone completes a task, the system learns. When they transfer it, it learns from that too. Continuous improvement built-in."
-        },
-        {
-            icon: Shield,
-            title: "Evidence-Backed Decisions",
-            description: "Every routing decision includes clear explanations. See why this person was chosen, what constraints were checked, and confidence scores for full transparency."
-        },
-        {
-            icon: Zap,
-            title: "Reduces Misrouting",
-                    description: "Stop wasting time on transfers and reassignments. Research shows incorrect assignment can increase time-to-mitigate by 10×. Centra gets it right the first time."
+            title: "Reinforcement Learning",
+            description: "The system learns from every override, transfer, and resolution, constantly refining its model to reduce noise and misrouting."
         }
     ];
 
     const benefits = [
-        "Faster incident resolution",
-        "Reduced on-call fatigue",
-        "Auditable decision trail",
-        "Integrates with Jira, PagerDuty, and more"
+        {
+            icon: Clock,
+            title: "Slash Resolution Times",
+            description: "Cut MTTR by 50% by eliminating routing bounce. The right expert gets the ticket instantly, not 3 hops later."
+        },
+        {
+            icon: Users,
+            title: "Prevent Burnout",
+            description: "Smart load balancing ensures no single engineer is overwhelmed, keeping your team fresh and effective."
+        },
+        {
+            icon: FileSearch,
+            title: "Full Context",
+            description: "Tickets are enriched with recent deployments, related errors, and runbooks so the fix can start immediately."
+        },
+        {
+            icon: Layers,
+            title: "Zero-Touch Integration",
+            description: "Connects seamlessly with your existing stack—Jira, PagerDuty, Slack, and GitHub—in minutes."
+        }
     ];
 
     return (
@@ -42,7 +58,7 @@ export default function LandingPage() {
             <ParticleBackground />
 
             {/* Hero Section */}
-            <section className="relative z-20 min-h-screen flex flex-col items-center justify-center px-4 text-center">
+            <section className="relative z-20 min-h-screen flex flex-col items-center justify-center px-4 text-center pt-20">
                 <motion.h1
                     initial={{ opacity: 0, y: 20, filter: "blur(10px)" }}
                     animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
@@ -58,7 +74,7 @@ export default function LandingPage() {
                     transition={{ delay: 0.3, duration: 0.8 }}
                     className="mt-6 max-w-2xl text-xl text-gray-300 md:text-2xl font-light pointer-events-none"
                 >
-                    Intelligent incident routing that learns from your team and gets smarter over time.
+                    The command center for your AI agents.
                 </motion.p>
 
                 <motion.div
@@ -79,7 +95,7 @@ export default function LandingPage() {
             </section>
 
             {/* How It Works Section */}
-            <section className="relative z-20 py-24 px-4">
+            <section className="relative z-20 py-24 px-4 bg-black/40">
                 <div className="max-w-7xl mx-auto">
                     <motion.div
                         initial={{ opacity: 0, y: 40 }}
@@ -92,38 +108,57 @@ export default function LandingPage() {
                             How It Works
                         </h2>
                         <p className="text-xl text-gray-400 max-w-2xl mx-auto">
-                            Centra learns from your team's expertise and makes smarter routing decisions over time.
+                            A complete intelligence loop for your engineering operations.
                         </p>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        {features.map((feature, index) => {
-                            const Icon = feature.icon;
-                            return (
-                                <motion.div
-                                    key={feature.title}
-                                    initial={{ opacity: 0, y: 40 }}
-                                    whileInView={{ opacity: 1, y: 0 }}
-                                    viewport={{ once: true, margin: "-50px" }}
-                                    transition={{ duration: 0.8, delay: index * 0.15, ease: "easeOut" }}
-                                    className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-6 hover:bg-white/10 transition-all"
-                                >
-                                    <div className="flex items-start gap-4">
-                                        <div className="p-3 bg-white/10 rounded-lg">
-                                            <Icon className="h-6 w-6 text-white" />
+                    <div className="flex flex-col lg:flex-row gap-12 items-center">
+                        {/* Left: Stacked Features */}
+                        <div className="flex flex-col gap-6 w-full lg:w-1/2">
+                            {features.map((feature, index) => {
+                                const Icon = feature.icon;
+                                return (
+                                    <motion.div
+                                        key={feature.title}
+                                        initial={{ opacity: 0, x: -50 }}
+                                        whileInView={{ opacity: 1, x: 0 }}
+                                        viewport={{ once: true, margin: "-50px" }}
+                                        transition={{ duration: 0.6, delay: index * 0.1, ease: "easeOut" }}
+                                        className="bg-zinc-900/50 backdrop-blur-md border border-white/5 rounded-2xl p-6 hover:bg-zinc-800/50 hover:border-white/10 transition-all group"
+                                    >
+                                        <div className="flex items-start gap-4">
+                                            <div className="p-3 bg-white/5 rounded-xl group-hover:bg-white/10 transition-colors flex-shrink-0">
+                                                <Icon className="h-6 w-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h3 className="text-xl font-semibold text-white mb-2">{feature.title}</h3>
+                                                <p className="text-gray-400 text-sm leading-relaxed">{feature.description}</p>
+                                            </div>
                                         </div>
-                                        <div className="flex-1">
-                                            <h3 className="text-xl font-semibold text-white mb-2">
-                                                {feature.title}
-                                            </h3>
-                                            <p className="text-gray-400 leading-relaxed">
-                                                {feature.description}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </motion.div>
-                            );
-                        })}
+                                    </motion.div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Right: Dashboard Image */}
+                        <div className="w-full lg:w-1/2">
+                            <motion.div
+                                initial={{ opacity: 0, x: 50, scale: 0.95 }}
+                                whileInView={{ opacity: 1, x: 0, scale: 1 }}
+                                viewport={{ once: true, margin: "-100px" }}
+                                transition={{ duration: 0.8 }}
+                                className="relative rounded-xl border border-white/10 shadow-2xl overflow-hidden bg-black/50 backdrop-blur-xl group"
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-tr from-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
+                                <img
+                                    src="/dashboard-preview.png"
+                                    alt="Centra Dashboard"
+                                    className="w-full h-auto rounded-xl opacity-90 hover:opacity-100 transition-opacity duration-500"
+                                />
+                                {/* Glass Reflection Effect */}
+                                <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none rounded-xl"></div>
+                            </motion.div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -136,27 +171,37 @@ export default function LandingPage() {
                         whileInView={{ opacity: 1, y: 0 }}
                         viewport={{ once: true, margin: "-100px" }}
                         transition={{ duration: 0.8, ease: "easeOut" }}
-                        className="text-center mb-12"
+                        className="text-center mb-16"
                     >
                         <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
                             Why Centra?
                         </h2>
                     </motion.div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                        {benefits.map((benefit, index) => (
-                            <motion.div
-                                key={benefit}
-                                initial={{ opacity: 0, y: 30 }}
-                                whileInView={{ opacity: 1, y: 0 }}
-                                viewport={{ once: true, margin: "-50px" }}
-                                transition={{ duration: 0.7, delay: index * 0.1, ease: "easeOut" }}
-                                className="flex items-center gap-3 bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4"
-                            >
-                                <CheckCircle2 className="h-5 w-5 text-white flex-shrink-0" />
-                                <span className="text-white font-medium">{benefit}</span>
-                            </motion.div>
-                        ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {benefits.map((benefit, index) => {
+                            const Icon = benefit.icon;
+                            return (
+                                <motion.div
+                                    key={benefit.title}
+                                    initial={{ opacity: 0, y: 30 }}
+                                    whileInView={{ opacity: 1, y: 0 }}
+                                    viewport={{ once: true, margin: "-50px" }}
+                                    transition={{ duration: 0.7, delay: index * 0.1, ease: "easeOut" }}
+                                    className="flex flex-col items-center text-center p-8 bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl hover:bg-white/10 transition-all hover:scale-[1.02]"
+                                >
+                                    <div className="p-4 bg-white/10 rounded-full mb-6">
+                                        <Icon className="h-8 w-8 text-white" />
+                                    </div>
+                                    <h3 className="text-2xl font-semibold text-white mb-3">
+                                        {benefit.title}
+                                    </h3>
+                                    <p className="text-gray-400 text-lg leading-relaxed max-w-sm">
+                                        {benefit.description}
+                                    </p>
+                                </motion.div>
+                            );
+                        })}
                     </div>
                 </div>
             </section>
