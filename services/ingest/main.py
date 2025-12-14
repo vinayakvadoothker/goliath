@@ -131,7 +131,7 @@ async def create_demo_work_item(request: DemoWorkItemRequest):
             embedding_3d[1],
             embedding_3d[2],
             created_at,
-            "demo",
+            "demo",  # origin_system
             request.story_points,
             request.impact
         ])
