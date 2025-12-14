@@ -1,41 +1,14 @@
 /**
- * Clerk middleware for route protection.
- * Protects all routes except public ones.
- * Redirects signed-in users from public pages to dashboard.
+ * Middleware (Clerk removed - no authentication).
  */
 
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/health(.*)',
-  '/api/webhooks(.*)',
-  '/api/user(.*)',
-])
-
-const isAuthRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-])
-
-export default clerkMiddleware(async (auth, req) => {
-  const { userId } = await auth()
-
-  // If signed in and on landing/auth pages, redirect to dashboard
-  if (userId && isAuthRoute(req)) {
-    const dashboardUrl = new URL('/dashboard', req.url)
-    return NextResponse.redirect(dashboardUrl)
-  }
-
-  // Protect non-public routes
-  if (!isPublicRoute(req)) {
-    await auth.protect()
-  }
-})
+export function middleware(request: NextRequest) {
+  // No authentication - allow all requests
+  return NextResponse.next()
+}
 
 export const config = {
   matcher: [
