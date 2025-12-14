@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, CheckSquare, Network, BarChart2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Network, BarChart2, Plus, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -56,6 +56,12 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                             <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <Network className="h-4 w-4" />
                                 {!collapsed && <span>Graph</span>}
+                            </Button>
+                        </Link>
+                        <Link href="/billing" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
+                                <CreditCard className="h-4 w-4" />
+                                {!collapsed && <span>Billing</span>}
                             </Button>
                         </Link>
                     </div>
