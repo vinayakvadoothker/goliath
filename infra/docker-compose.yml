@@ -267,11 +267,17 @@ services:
       NEXT_PUBLIC_DECISION_URL: http://localhost:8002
       NEXT_PUBLIC_LEARNER_URL: http://localhost:8003
       NEXT_PUBLIC_GRAPH_URL: http://localhost:8002
+      DATABASE_URL: postgresql://goliath:goliath@postgres:5432/goliath
       NODE_ENV: development
     depends_on:
-      - ingest
-      - decision
-      - learner
+      postgres:
+        condition: service_healthy
+      ingest:
+        condition: service_healthy
+      decision:
+        condition: service_healthy
+      learner:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
       interval: 10s

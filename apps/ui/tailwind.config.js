@@ -76,8 +76,15 @@ module.exports = {
         md: "0.375rem",
         sm: "0.25rem",
       },
+      keyframes: {
+        shimmer: {
+          "0%": { backgroundPosition: "200% 0" },
+          "100%": { backgroundPosition: "-200% 0" },
+        },
+      },
       animation: {
         "pulse-slow": "pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        shimmer: "shimmer 3s ease-in-out infinite",
       },
     },
   },

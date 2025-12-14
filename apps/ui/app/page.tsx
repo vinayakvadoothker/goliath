@@ -3,7 +3,7 @@
 import { motion } from "framer-motion";
 import ParticleBackground from "@/components/landing/ParticleBackground";
 import Link from "next/link";
-import { ArrowRight, Brain, TrendingUp, Shield, Zap, CheckCircle2, BarChart3 } from "lucide-react";
+import { ArrowRight, Brain, TrendingUp, Shield, Zap, CheckCircle2 } from "lucide-react";
 
 export default function LandingPage() {
     const features = [
@@ -61,25 +61,16 @@ export default function LandingPage() {
                     Intelligent incident routing that learns from your team and gets smarter over time.
                 </motion.p>
 
-                {/* Sign In / Sign Up Buttons */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     transition={{ delay: 0.7, duration: 0.5 }}
-                    className="mt-12 flex flex-col sm:flex-row gap-4 pointer-events-auto"
+                    className="mt-12 pointer-events-auto"
                 >
-                    <Link href="/dashboard">
+                    <Link href="/sign-up">
                         <button className="group relative px-8 py-4 bg-white text-black rounded-full transition-all hover:scale-105 font-medium">
                             <span className="relative flex items-center gap-2">
-                                Sign In
-                                <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                            </span>
-                        </button>
-                    </Link>
-                    <Link href="/dashboard">
-                        <button className="group relative px-8 py-4 bg-transparent border-2 border-white/30 text-white rounded-full transition-all hover:scale-105 hover:border-white/50 font-medium">
-                            <span className="relative flex items-center gap-2">
-                                Sign Up
+                                Get Started
                                 <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                             </span>
                         </button>
@@ -185,20 +176,12 @@ export default function LandingPage() {
                         <p className="text-xl text-gray-400 mb-8 max-w-2xl mx-auto">
                             See how Centra can reduce misrouting and speed up incident resolution for your team.
                         </p>
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center pointer-events-auto">
-                            <Link href="/dashboard">
+                        <div className="pointer-events-auto">
+                            <Link href="/sign-up">
                                 <button className="group relative px-8 py-4 bg-white text-black rounded-full transition-all hover:scale-105 font-medium">
                                     <span className="relative flex items-center gap-2">
-                                        View Dashboard
+                                        Get Started
                                         <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                                    </span>
-                                </button>
-                            </Link>
-                            <Link href="/dashboard">
-                                <button className="group relative px-8 py-4 bg-transparent border-2 border-white/30 text-white rounded-full transition-all hover:scale-105 hover:border-white/50 font-medium">
-                                    <span className="relative flex items-center gap-2">
-                                        See How It Works
-                                        <BarChart3 className="h-4 w-4 group-hover:rotate-12 transition-transform" />
                                     </span>
                                 </button>
                             </Link>
