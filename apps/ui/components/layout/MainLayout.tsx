@@ -4,7 +4,6 @@ import { useState } from 'react';
 import { Navbar } from './Navbar';
 import { Sidebar } from './Sidebar';
 import { usePathname } from 'next/navigation';
-import { useUserSync } from '@/hooks/useUserSync';
 
 interface MainLayoutProps {
     children: React.ReactNode;
@@ -17,10 +16,8 @@ export function MainLayout({ children }: MainLayoutProps) {
         pathname?.startsWith('/landing') || 
         pathname?.startsWith('/login') ||
         pathname?.startsWith('/sign-in') ||
-        pathname?.startsWith('/sign-up');
-
-    // Sync user to Postgres on first authenticated page load
-    useUserSync();
+        pathname?.startsWith('/sign-up') ||
+        pathname?.startsWith('/signin');
 
     if (isPublicPage) {
         return <>{children}</>;

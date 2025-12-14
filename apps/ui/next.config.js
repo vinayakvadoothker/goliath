@@ -8,8 +8,9 @@ const nextConfig = {
     NEXT_PUBLIC_LEARNER_URL: process.env.NEXT_PUBLIC_LEARNER_URL || 'http://localhost:8003',
     NEXT_PUBLIC_GRAPH_URL: process.env.NEXT_PUBLIC_GRAPH_URL || 'http://localhost:8002',
     DATABASE_URL: process.env.DATABASE_URL || 'postgresql://goliath:goliath@localhost:5432/goliath',
+    STRIPE_SECRET_KEY: process.env.STRIPE_SECRET_KEY,
+    NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY,
   },
 }
 
 module.exports = nextConfig
-

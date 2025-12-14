@@ -2,6 +2,7 @@
 Ingest Service - Single source of truth for all work items
 """
 from fastapi import FastAPI, HTTPException, Request, Query
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import os
@@ -25,6 +26,15 @@ logging.basicConfig(
 )
 
 app = FastAPI(title="Ingest Service", version="0.1.0")
+
+# CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 class WorkItemCreate(BaseModel):

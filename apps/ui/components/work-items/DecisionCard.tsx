@@ -1,70 +1,103 @@
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { ConfidenceBadge } from "@/components/work-items/ConfidenceBadge";
-import { Brain, ArrowRight, UserCheck, ShieldAlert, History } from "lucide-react";
+'use client'
+
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Progress } from '@/components/ui/progress'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Separator } from '@/components/ui/separator'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { ChevronDown } from 'lucide-react'
+import type { Decision, Candidate } from '@/lib/types'
 
 interface DecisionCardProps {
-    workItemId: string;
-    assignedTo: string;
-    confidence: number;
-    reasoning: string;
-    onOverride: () => void;
+  decision: Decision
+  assigneeName?: string
+  backupNames?: string[]
+  evidence?: Array<{
+    type: string
+    text: string
+    time_window: string
+    source: string
+  }>
 }
 
-export function DecisionCard({ workItemId, assignedTo, confidence, reasoning, onOverride }: DecisionCardProps) {
+export function DecisionCard({ decision, assigneeName, backupNames, evidence }: DecisionCardProps) {
+  const getConfidenceColor = (confidence: number) => {
+    if (confidence > 0.7) return 'bg-green-500'
+    if (confidence > 0.4) return 'bg-yellow-500'
+    return 'bg-red-500'
+  }
+
     return (
-        <Card className="border-decision/30 bg-decision/5">
-            <CardHeader className="pb-3">
-                <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-decision" />
-                        <CardTitle className="text-lg text-decision">Goliath Decision</CardTitle>
-                    </div>
-                    <ConfidenceBadge confidence={confidence} />
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <CardTitle>Decision</CardTitle>
+          <Badge variant="outline" className="bg-purple-500/20 text-purple-400">
+            {(decision.confidence * 100).toFixed(1)}% Confidence
+          </Badge>
                 </div>
-                <CardDescription>
-                    Automated assignment proposal based on historical performance and availability.
-                </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-background border border-border">
-                    <div className="flex items-center gap-3">
-                        <div className="text-sm font-medium text-muted-foreground">Assign To:</div>
-                        <div className="flex items-center gap-2">
-                            <div className="h-8 w-8 rounded-full bg-primary/20 grid place-items-center font-bold text-primary">
-                                {assignedTo.substring(0, 2).toUpperCase()}
-                            </div>
-                            <span className="font-bold text-lg">{assignedTo}</span>
+        {/* Primary Assignee */}
+        <div className="flex items-center gap-4 p-4 bg-muted/50 rounded-lg">
+          <Avatar className="h-16 w-16">
+            <AvatarFallback className="text-lg">
+              {assigneeName?.charAt(0).toUpperCase() || decision.primary_human_id.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1">
+            <h3 className="text-xl font-semibold">{assigneeName || decision.primary_human_id}</h3>
+            <p className="text-sm text-muted-foreground">Primary Assignee</p>
                         </div>
                     </div>
-                    <Badge variant="outline" className="text-xs">Top Candidate</Badge>
+
+        {/* Confidence */}
+        <div className="space-y-2">
+          <div className="flex justify-between text-sm">
+            <span>Confidence</span>
+            <span>{(decision.confidence * 100).toFixed(1)}%</span>
+          </div>
+          <Progress value={decision.confidence * 100} className="h-2" />
                 </div>
 
-                <div className="space-y-2">
-                    <h4 className="text-sm font-semibold flex items-center gap-2">
-                        <History className="h-4 w-4 text-muted-foreground" />
-                        Reasoning Trace
-                    </h4>
-                    <div className="p-3 text-sm rounded-md bg-muted/50 font-mono text-muted-foreground whitespace-pre-wrap">
-                        {reasoning}
+        <Separator />
+
+        {/* Backup Assignees */}
+        {decision.backup_human_ids.length > 0 && (
+          <div>
+            <h4 className="text-sm font-semibold mb-2">Backup Assignees</h4>
+            <div className="flex gap-2 flex-wrap">
+              {decision.backup_human_ids.map((id, idx) => (
+                <Badge key={id} variant="outline">
+                  {backupNames?.[idx] || id}
+                </Badge>
+              ))}
                     </div>
                 </div>
+        )}
+
+        {/* Evidence */}
+        {evidence && evidence.length > 0 && (
+          <Collapsible>
+            <CollapsibleTrigger className="flex items-center gap-2 w-full text-left">
+              <ChevronDown className="h-4 w-4" />
+              <span className="font-semibold">Evidence ({evidence.length})</span>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-2">
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                {evidence.map((ev, i) => (
+                  <li key={i}>
+                    <span className="font-medium">{ev.type}:</span> {ev.text}
+                    {ev.time_window && <span className="text-muted-foreground"> ({ev.time_window})</span>}
+                    {ev.source && <span className="text-muted-foreground"> [{ev.source}]</span>}
+                  </li>
+                ))}
+              </ul>
+            </CollapsibleContent>
+          </Collapsible>
+        )}
             </CardContent>
-            <CardFooter className="flex justify-between border-t bg-muted/20 p-4">
-                <div className="text-xs text-muted-foreground flex items-center gap-1">
-                    <ShieldAlert className="h-3 w-3" />
-                    Audit ID: {workItemId}-DEC-001
-                </div>
-                <div className="flex gap-3">
-                    <Button variant="outline" size="sm" onClick={onOverride} className="border-red-500/30 hover:bg-red-500/10 hover:text-red-500">
-                        Override Decision
-                    </Button>
-                    <Button size="sm" className="bg-decision hover:bg-decision/90 text-decision-foreground">
-                        Confirm Assignment <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                </div>
-            </CardFooter>
         </Card>
-    );
+  )
 }

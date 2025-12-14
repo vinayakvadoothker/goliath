@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, CheckSquare, Network, BarChart2, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Network, BarChart2, Plus, ChevronLeft, ChevronRight, CreditCard } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -34,7 +34,7 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                         </h3>
                     )}
                     <div className="space-y-1">
-                        <Link href="/" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                        <Link href="/dashboard" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
                             <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <LayoutDashboard className="h-4 w-4" />
                                 {!collapsed && <span>Dashboard</span>}
@@ -46,16 +46,22 @@ export function Sidebar({ collapsed, setCollapsed }: SidebarProps) {
                                 {!collapsed && <span>Work Items</span>}
                             </Button>
                         </Link>
+                        <Link href="/people" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                            <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
+                                <BarChart2 className="h-4 w-4" />
+                                {!collapsed && <span>People</span>}
+                            </Button>
+                        </Link>
                         <Link href="/graph" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
                             <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
                                 <Network className="h-4 w-4" />
                                 {!collapsed && <span>Graph</span>}
                             </Button>
                         </Link>
-                        <Link href="/stats" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
+                        <Link href="/billing" className={cn("w-full", collapsed ? "flex justify-center" : "block")}>
                             <Button variant="ghost" size={collapsed ? "icon" : "default"} className={cn("gap-2", collapsed ? "" : "w-full justify-start")}>
-                                <BarChart2 className="h-4 w-4" />
-                                {!collapsed && <span>Stats</span>}
+                                <CreditCard className="h-4 w-4" />
+                                {!collapsed && <span>Billing</span>}
                             </Button>
                         </Link>
                     </div>

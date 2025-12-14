@@ -1,159 +1,175 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator"; // Need to create Separator or just use hr
-import { ArrowLeft, Clock, Activity, FileText, Share2, Info } from "lucide-react";
-import Link from "next/link";
-import { DecisionCard } from "@/components/work-items/DecisionCard";
-import { EvidenceBullet } from "@/components/work-items/EvidenceBullet";
-import { SeverityBadge } from "@/components/shared/SeverityBadge";
-import { OverrideModal } from "@/components/work-items/OverrideModal";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { useState } from 'react'
+import { useParams, useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { WorkItemHeader } from '@/components/work-items/WorkItemHeader'
+import { DecisionCard } from '@/components/work-items/DecisionCard'
+import { ConstraintsTable } from '@/components/work-items/ConstraintsTable'
+import { ActionsPanel } from '@/components/work-items/ActionsPanel'
+import { OverrideModal } from '@/components/work-items/OverrideModal'
+import { AuditDrawer } from '@/components/work-items/AuditDrawer'
+import { useWorkItem, useDecision, useProfiles, useRecordOutcome } from '@/lib/queries'
+import Link from 'next/link'
 
-export default function WorkItemDetailPage({ params }: { params: { id: string } }) {
-    const [showOverride, setShowOverride] = useState(false);
+export default function WorkItemDetailPage() {
+  const params = useParams()
+  const router = useRouter()
+  const workItemId = params.id as string
 
-    // Mock Data
-    const workItem = {
-        id: params.id || "WI-3921",
-        title: "High latency in payments-api",
-        description: "API latency p99 exceeded 2000ms threshold for > 5 minutes. Source identified as database connection pool exhaustion in payments-service deployment.",
-        service: "payments-api",
-        severity: "sev1",
-        status: "Open",
-        created: "2023-10-27T10:30:00Z",
-    };
+  const [overrideModalOpen, setOverrideModalOpen] = useState(false)
+  const [auditDrawerOpen, setAuditDrawerOpen] = useState(false)
 
-    const decision = {
-        assignedTo: "pager-bot",
-        confidence: 0.98,
-        reasoning: "1. Service 'payments-api' has active on-call rotation: [Primary: pager-bot].\n2. Incident matches 'db-connection' cluster pattern seen in WI-3402.\n3. 'pager-bot' successfully resolved WI-3402 in 12m.\n4. Human load check: Sarah (On-Call) is currently handling WI-3918 (Sev2).",
-    };
+  const { data: workItem, isLoading: workItemLoading } = useWorkItem(workItemId)
+  const { data: decision, isLoading: decisionLoading } = useDecision(workItemId)
+  const { data: profilesData } = useProfiles(workItem?.service || '')
+  const recordOutcome = useRecordOutcome()
 
+  // Get assignee names from profiles
+  const assigneeName = profilesData?.humans.find(
+    (h) => h.human_id === decision?.primary_human_id
+  )?.display_name
+
+  const backupNames = decision?.backup_human_ids.map((id) =>
+    profilesData?.humans.find((h) => h.human_id === id)?.display_name || id
+  )
+
+  const handleOverride = () => {
+    setOverrideModalOpen(true)
+  }
+
+  const handleMarkResolved = async () => {
+    if (!workItem || !decision) return
+
+    const outcome = {
+      event_id: `resolved-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      decision_id: decision.id,
+      type: 'resolved',
+      actor_id: 'user', // TODO: Get from auth
+      timestamp: new Date().toISOString(),
+    }
+
+    try {
+      await recordOutcome.mutateAsync({ workItemId: workItem.id, outcome })
+      router.refresh()
+    } catch (error) {
+      console.error('Failed to mark resolved:', error)
+    }
+  }
+
+  if (workItemLoading) {
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-5xl mx-auto">
-            {/* Header */}
-            <div className="flex flex-col gap-4">
-                <Link href="/work-items" className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1">
-                    <ArrowLeft className="h-4 w-4" /> Back to List
+      <div className="space-y-6">
+        <div className="text-center py-12 text-muted-foreground">Loading work item...</div>
+      </div>
+    )
+  }
+
+  if (!workItem) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-12">
+          <div className="text-red-500 mb-2">Work item not found</div>
+          <Link href="/work-items">
+            <Button variant="outline">Back to Work Items</Button>
                 </Link>
-                <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-3">
-                            <h1 className="text-3xl font-bold tracking-tight">{workItem.id}: {workItem.title}</h1>
-                            <SeverityBadge severity={workItem.severity as any} />
-                            <Badge variant="outline">{workItem.status}</Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                                <Activity className="h-4 w-4" />
-                                {workItem.service}
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                Created 10 mins ago
                             </div>
                         </div>
-                    </div>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                            <Share2 className="mr-2 h-4 w-4" /> Share
-                        </Button>
-                        <Button variant="outline" size="sm">
-                            <FileText className="mr-2 h-4 w-4" /> Logs
-                        </Button>
-                    </div>
-                </div>
-            </div>
+    )
+  }
 
-            <div className="grid md:grid-cols-3 gap-6">
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Breadcrumb */}
+      <nav className="text-sm text-muted-foreground">
+        <Link href="/" className="hover:text-foreground">Home</Link>
+        {' > '}
+        <Link href="/work-items" className="hover:text-foreground">Work Items</Link>
+        {' > '}
+        <span className="text-foreground">{workItem.id}</span>
+      </nav>
+
+      {/* Header */}
+      <WorkItemHeader workItem={workItem} />
+
                 {/* Main Content */}
-                <div className="md:col-span-2 space-y-6">
-                    {/* Description */}
-                    <div className="p-4 rounded-lg border bg-card">
-                        <h3 className="font-semibold mb-2">Description</h3>
-                        <p className="text-sm text-muted-foreground leading-relaxed">
-                            {workItem.description}
-                        </p>
-                    </div>
-
-                    {/* Decision Card */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Left Column - Decision Card */}
+        <div className="lg:col-span-2 space-y-6">
+          {decisionLoading ? (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-muted-foreground">Loading decision...</div>
+              </CardContent>
+            </Card>
+          ) : decision ? (
+            <>
                     <DecisionCard
-                        workItemId={workItem.id}
-                        assignedTo={decision.assignedTo}
-                        confidence={decision.confidence}
-                        reasoning={decision.reasoning}
-                        onOverride={() => setShowOverride(true)}
-                    />
-
-                    {/* Evidence Section */}
-                    <div className="space-y-3">
-                        <h3 className="font-semibold text-lg">Supporting Evidence</h3>
-                        <div className="bg-card rounded-lg border p-1">
-                            <EvidenceBullet
-                                type="on_call"
-                                text="Target user is currently Primary On-Call for 'payments-api'"
-                                source="PagerDuty"
-                            />
-                            <EvidenceBullet
-                                type="similar_incident"
-                                text="Resolved similar incident (92% similarity) last week"
-                                timeWindow="7 days ago"
-                                source="Knowledge Graph"
-                            />
-                            <EvidenceBullet
-                                type="low_load"
-                                text="Current cognitive load is low (0 active tickets)"
-                                source="Jira"
-                            />
-                        </div>
-                    </div>
+                decision={decision}
+                assigneeName={assigneeName}
+                backupNames={backupNames}
+              />
+              <ConstraintsTable constraints={decision.constraints_checked} />
+            </>
+          ) : (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center text-muted-foreground">
+                  No decision made yet for this work item.
                 </div>
+              </CardContent>
+            </Card>
+          )}
 
-                {/* Sidebar Context */}
-                <div className="space-y-6">
-                    <div className="rounded-lg border bg-card p-4 space-y-4">
-                        <h3 className="font-semibold text-sm uppercase text-muted-foreground">Context</h3>
-
-                        <div className="space-y-3">
-                            <div className="text-sm">
-                                <span className="text-muted-foreground block mb-1">Related Services</span>
-                                <div className="flex flex-wrap gap-2">
-                                    <Badge variant="secondary">database</Badge>
-                                    <Badge variant="secondary">auth-service</Badge>
-                                </div>
+          {/* Work Item Description */}
+          <Card>
+            <CardContent className="p-6">
+              <h3 className="font-semibold mb-2">Description</h3>
+              <p className="text-sm whitespace-pre-wrap">{workItem.description}</p>
+            </CardContent>
+          </Card>
                             </div>
 
-                            <div className="text-sm">
-                                <span className="text-muted-foreground block mb-1">Impact Analysis</span>
-                                <Alert variant="warning" className="py-2">
-                                    <AlertTitle className="text-xs font-bold">Customer Facing</AlertTitle>
-                                    <AlertDescription className="text-xs">
-                                        High probability of checkout failures.
-                                    </AlertDescription>
-                                </Alert>
-                            </div>
-                        </div>
-                    </div>
+        {/* Right Column - Actions */}
+        <div className="space-y-6">
+          <ActionsPanel
+            workItem={workItem}
+            hasDecision={!!decision}
+            onOverride={handleOverride}
+            onMarkResolved={handleMarkResolved}
+          />
 
-                    <div className="rounded-lg border bg-card p-4 space-y-4">
-                        <h3 className="font-semibold text-sm uppercase text-muted-foreground">Similar Incidents</h3>
-                        <div className="space-y-2">
-                            <Link href="#" className="block text-sm hover:underline text-primary">WI-3402: DB Pool Exhaustion</Link>
-                            <Link href="#" className="block text-sm hover:underline text-primary">WI-3110: Latency Spike</Link>
-                        </div>
-                    </div>
+          {/* Audit Trail Button */}
+          {decision && (
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={() => setAuditDrawerOpen(true)}
+            >
+              View Full Audit Trail
+            </Button>
+          )}
                 </div>
             </div>
 
+      {/* Modals */}
+      {workItem && decision && (
             <OverrideModal
-                isOpen={showOverride}
-                onClose={() => setShowOverride(false)}
-                currentAssignee={decision.assignedTo}
-                onSubmit={(data) => console.log("Overlay Submit", data)}
+          isOpen={overrideModalOpen}
+          onClose={() => setOverrideModalOpen(false)}
+          workItemId={workItem.id}
+          service={workItem.service}
+          currentAssigneeId={decision.primary_human_id}
+          currentAssigneeName={assigneeName}
+        />
+      )}
+
+      <AuditDrawer
+        isOpen={auditDrawerOpen}
+        onClose={() => setAuditDrawerOpen(false)}
+        workItemId={workItemId}
             />
         </div>
-    );
+  )
 }
